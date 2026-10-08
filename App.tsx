@@ -161,7 +161,7 @@ export default function App() {
           })()}
           sttProvider={(() => {
             const r = getDb().execute(`SELECT value FROM app_settings WHERE key='stt_provider'`);
-            return (r.rows?.length ? r.rows.item(0).value : 'spitch') as any;
+            return (r.rows?.length ? r.rows.item(0).value : 'n-atlas') as any;
           })()}
           onFinished={goHome}
           onManualFallback={() => setScreen('SALE')}

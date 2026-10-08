@@ -174,7 +174,7 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `INSERT OR IGNORE INTO app_settings (key, value) VALUES
         ('language','yo'),('voice_enabled','1'),('tts_enabled','1'),
         ('eod_summary_enabled','1'),('eod_summary_time','19:00'),
-        ('sync_wifi_only','0'),('photo_backup','0'),('stt_provider','spitch');`,
+        ('sync_wifi_only','0'),('photo_backup','0'),('stt_provider','n-atlas');`,
     ],
   },
   {
