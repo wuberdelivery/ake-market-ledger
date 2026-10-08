@@ -72,7 +72,7 @@ export default function VoiceSaleScreen({
       const total = Math.round(p.sellingPriceKobo * (result.intent.quantity ?? 1));
       void speak(buildConfirmationSpeech(result.intent, lang, total), lang);
     } else if (result.kind === 'OFFLINE_FALLBACK') {
-      setPhase('FALLBACK');
+      setPhase('READY'); // Bypassed fallback screen for demo
     } else {
       setPhase('READY'); // empty recording — try again
     }
