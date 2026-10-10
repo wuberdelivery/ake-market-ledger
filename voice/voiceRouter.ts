@@ -1,45 +1,71 @@
 // ============================================================
 // AKE LEDGER — voiceRouter.ts
-// The hybrid voice pipeline:
-//   record → network pre-flight → cloud STT (4s timeout)
-//          ↘ offline/failure → guided manual fallback
-// plus TTS speak-back for the confirmation loop.
-//
-// Deps:
-//   npm i react-native-audio-recorder-player react-native-tts
-//
-// Cloud STT: the endpoint below is written against Spitch's
-// Nigerian speech API shape (Yoruba/Hausa/Igbo). OpenAI Whisper
-// API also handles Yoruba acceptably as a fallback provider —
-// benchmark both with real market recordings before launch.
+//   record → official N-ATLaS ASR gateway → local intent parser
+//          ↘ service failure → retry/manual fallback (never a dead end)
+// plus system TTS speak-back for the confirmation loop.
 // ============================================================
 
+import {
+  PermissionsAndroid,
+  Platform,
+} from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import Tts from 'react-native-tts';
-import NetInfo from '@react-native-community/netinfo';
 import type { Language, Product } from '../models/types';
 import { parseSaleIntent, SaleIntent } from './yorubaIntentParser';
-import { transcribe, SttProvider } from './sttProviders';
+import { SttError, transcribe } from './sttProviders';
 
-const STT_TIMEOUT_MS = 8000; // strict: market wifi lies about being connected
-
+const STT_TIMEOUT_MS = 120000; // CPU inference may cold-start the model.
 const recorder = new AudioRecorderPlayer();
 
 export type VoiceResult =
-  | { kind: 'INTENT'; intent: SaleIntent; transcript: string; online: true }
-  | { kind: 'OFFLINE_FALLBACK'; reason: 'no_network' | 'timeout' | 'stt_error' }
+  | {
+      kind: 'INTENT';
+      intent: SaleIntent;
+      transcript: string;
+      model: string;
+      online: true;
+    }
+  | {
+      kind: 'OFFLINE_FALLBACK';
+      reason: 'no_network' | 'timeout' | 'stt_error';
+      message: string;
+    }
   | { kind: 'EMPTY' };
+
+let currentPath: string | null = null;
+
+async function ensureMicrophonePermission(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  const permission = PermissionsAndroid.PERMISSIONS.RECORD_AUDIO;
+  const alreadyGranted = await PermissionsAndroid.check(permission);
+  if (alreadyGranted) {
+    return;
+  }
+
+  const result = await PermissionsAndroid.request(permission, {
+    title: 'Microphone access',
+    message: 'AKE Ledger needs the microphone to record a spoken sale.',
+    buttonPositive: 'Allow',
+    buttonNegative: 'Not now',
+  });
+  if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+    throw new Error('Microphone permission is required for voice sales.');
+  }
+}
 
 // ------------------------------------------------------------
 // Recording control (press-and-hold semantics)
 // ------------------------------------------------------------
-let currentPath: string | null = null;
-
 export async function startRecording(): Promise<void> {
-  // AAC/m4a: small files, accepted by every cloud STT
+  await ensureMicrophonePermission();
+  // AAC/m4a is small and is decoded in memory by the VPS gateway.
   currentPath = await recorder.startRecorder(undefined, {
     AudioEncoderAndroid: 3,        // AAC
-    AudioSourceAndroid: 6,         // VOICE_RECOGNITION source (noise-tuned)
+    AudioSourceAndroid: 6,         // VOICE_RECOGNITION (noise-tuned)
     OutputFormatAndroid: 2,        // MPEG_4
     AudioSamplingRateAndroid: 16000,
     AudioEncodingBitRateAndroid: 32000,
@@ -49,52 +75,66 @@ export async function startRecording(): Promise<void> {
 export async function stopRecordingAndProcess(
   language: Language,
   products: Product[],
-  sttApiKey: string | null,
-  sttProvider: SttProvider = 'spitch'
 ): Promise<VoiceResult> {
-  const path = await recorder.stopRecorder();
-  currentPath = null;
-  if (!path) return { kind: 'EMPTY' };
-
-  // 1. Network pre-flight — hardware check first, it's instant
-  const net = await NetInfo.fetch();
-  if (!net.isConnected || !sttApiKey) {
-    return { kind: 'OFFLINE_FALLBACK', reason: 'no_network' };
+  if (!currentPath) {
+    return { kind: 'EMPTY' };
   }
 
-  // 2. Cloud STT via the selected provider (Spitch / Whisper / ElevenLabs)
+  let path: string;
   try {
-    const { transcript } = await transcribe({
-      provider: sttProvider,
-      apiKey: sttApiKey,
+    path = await recorder.stopRecorder();
+  } catch {
+    currentPath = null;
+    return { kind: 'EMPTY' };
+  }
+  currentPath = null;
+  if (!path) {
+    return { kind: 'EMPTY' };
+  }
+
+  try {
+    const { transcript, model } = await transcribe({
       audioPath: path,
       language,
       timeoutMs: STT_TIMEOUT_MS,
     });
-    if (!transcript.trim()) return { kind: 'EMPTY' };
+    if (!transcript.trim()) {
+      return { kind: 'EMPTY' };
+    }
 
-    // 3. Intent parsing (local, instant, works on imperfect transcripts)
+    // Intent parsing remains local: fast, deterministic and auditable.
     const intent = parseSaleIntent(transcript, products);
-    return { kind: 'INTENT', intent, transcript, online: true };
-  } catch (e: any) {
+    return { kind: 'INTENT', intent, transcript, model, online: true };
+  } catch (error: any) {
+    const sttError = error instanceof SttError ? error : null;
+    const reason = sttError?.status === 408
+      ? 'timeout'
+      : sttError?.status === null
+        ? 'no_network'
+        : 'stt_error';
     return {
       kind: 'OFFLINE_FALLBACK',
-      reason: e?.name === 'AbortError' ? 'timeout' : 'stt_error',
+      reason,
+      message: sttError?.message
+        ?? 'N-ATLaS could not process the recording. Please retry.',
     };
   }
 }
 
 export async function cancelRecording(): Promise<void> {
-  try { await recorder.stopRecorder(); } catch { /* not recording */ }
+  if (!currentPath) {
+    return;
+  }
+  try {
+    await recorder.stopRecorder();
+  } catch {
+    // Recorder was already stopped.
+  }
   currentPath = null;
 }
 
 // ------------------------------------------------------------
-// TTS speak-back (the confirmation voice)
-// System TTS: recent Google Speech Services include Yoruba; where
-// the device lacks a Yoruba voice, Tts falls back to the default
-// engine — the confirmation SCREEN always shows the same info
-// visually, so voice is enhancement, never a dependency.
+// TTS speak-back
 // ------------------------------------------------------------
 const TTS_LOCALE: Record<Language, string> = {
   yo: 'yo-NG', ha: 'ha-NG', ig: 'ig-NG', en: 'en-NG',
@@ -103,14 +143,16 @@ const TTS_LOCALE: Record<Language, string> = {
 export async function speak(text: string, language: Language): Promise<void> {
   try {
     await Tts.setDefaultLanguage(TTS_LOCALE[language]);
-  } catch { /* voice not installed — use device default */ }
+  } catch {
+    // If a language voice is absent, the system default still provides audio.
+  }
   Tts.speak(text);
 }
 
 export function buildConfirmationSpeech(
   intent: SaleIntent,
   language: Language,
-  totalKobo: number
+  totalKobo: number,
 ): string {
   const naira = (k: number) => `${Math.round(k / 100).toLocaleString('en-NG')} naira`;
   if (language === 'yo') {

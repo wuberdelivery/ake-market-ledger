@@ -46,7 +46,6 @@ function loadPeriod(period: Period): PeriodData {
   const db = getDb();
   let row: any = null;
   let days = 1;
-  let label = '';
 
   if (period === 'today') {
     const r = db.execute(

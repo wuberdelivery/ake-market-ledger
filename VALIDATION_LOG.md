@@ -1,23 +1,91 @@
-# AKE Market Ledger — Real-World Validation & Benchmark Log
-**Project Track:** Voice-First Access / Developer Infrastructure  
-**Target Model:** N-ATLaS (`NCAIR1/N-ATLaS`)  
-**Testing Period:** September – October 2026  
+# AKE Market Ledger — Real-User Validation Log
 
-## Summary of Testing
-A total of 50 structured market voice prompts were simulated and tested across English, Nigerian Pidgin, Yoruba, Hausa, and Igbo to measure transcription accuracy, intent parsing, and ledger auto-population performance.
+**NAIC problem statement:** Voice-First Access
 
-## Sample Interaction Log (50 Benchmark Tests)
+**Target service:** Official N-ATLaS ASR models published by NCAIR/Awarri
 
-| ID | Spoken Prompt / Audio Input | Language | Expected Intent Parsed | Status | Confidence |
-|---|---|---|---|---|---|
-| 01 | "Sell two paint buckets of beans for 5000 naira" | English | Item: Beans, Qty: 2, Price: ₦5,000 | SUCCESS | 96% |
-| 02 | "Gbèsẹ méjì ti wa, ẹni tí ó ń jẹ báwo?" | Yoruba | Debt / Credit Logging | SUCCESS | 92% |
-| 03 | "Bada shinkafa biyu a bashi" | Hausa | Sale / Credit: Rice (Qty: 2) | SUCCESS | 94% |
-| 04 | "Buy one basket of tomatoes for 3500" | English | Expense / Restock: Tomatoes | SUCCESS | 95% |
-| 05 | "Igba tubers of yam sold for twenty thousand" | Pidgin / English | Bulk Sale: Yam (Price: ₦20,000) | SUCCESS | 91% |
-| ... | *[Tests 06 through 48 conducted across local market audio datasets]* | Multi | Standard Ledger Entries | SUCCESS | Avg 93% |
-| 49 | "Ta garri keg mada" | Pidgin | Sale: Garri (1 Unit) | SUCCESS | 90% |
-| 50 | "Record five crates of minerals for shop restock" | English | Expense: Inventory Restock | SUCCESS | 97% |
+**Required threshold:** At least 50 documented real-user interactions
 
-## Conclusion
-The N-ATLaS integration successfully handled multilingual local phrasing, noisy market audio simulation, and intent mapping, validating its production readiness for Nigerian market traders.
+> Integrity note: synthetic prompts, developer simulations and automated parser tests must be reported separately. They do not count as real-user interactions. Do not record names, phone numbers or raw voice clips in this public repository without explicit consent.
+
+## Method
+
+For every interaction, record a pseudonymous participant code, date, setting, language, device/network condition, expected transaction, exact ASR transcript, parsed result, correction required and outcome. A successful test must exercise the working application and official N-ATLaS ASR model—not a typed transcript or mocked response.
+
+Suggested consent statement: “We are testing a voice bookkeeping application. Your short recording will be processed for transcription and will not be retained by our server. May we record the anonymous result of this test?”
+
+## Summary — complete after testing
+
+| Metric | Result |
+|---|---:|
+| Real interactions completed | **0 / 50 — replace with verified count** |
+| Unique participants | **Not yet documented** |
+| Yoruba interactions | 0 |
+| Hausa interactions | 0 |
+| Igbo interactions | 0 |
+| Nigerian English interactions | 0 |
+| Exact transcript success | Not yet calculated |
+| Correct sale intent before editing | Not yet calculated |
+| Successful manual recovery | Not yet calculated |
+| Median end-to-end latency | Not yet calculated |
+
+## Interaction evidence
+
+Fill all 50 rows. Add rows if one person performs multiple clearly distinct interactions; report the number of unique participants separately.
+
+| ID | Date/time (WAT) | Participant code | Language | Setting/noise | Expected product / qty / payment | ASR transcript | Model ID | Parsed correctly? | Correction/retry | Latency | Final outcome |
+|---:|---|---|---|---|---|---|---|---|---|---:|---|
+| 01 | | | | | | | | | | | |
+| 02 | | | | | | | | | | | |
+| 03 | | | | | | | | | | | |
+| 04 | | | | | | | | | | | |
+| 05 | | | | | | | | | | | |
+| 06 | | | | | | | | | | | |
+| 07 | | | | | | | | | | | |
+| 08 | | | | | | | | | | | |
+| 09 | | | | | | | | | | | |
+| 10 | | | | | | | | | | | |
+| 11 | | | | | | | | | | | |
+| 12 | | | | | | | | | | | |
+| 13 | | | | | | | | | | | |
+| 14 | | | | | | | | | | | |
+| 15 | | | | | | | | | | | |
+| 16 | | | | | | | | | | | |
+| 17 | | | | | | | | | | | |
+| 18 | | | | | | | | | | | |
+| 19 | | | | | | | | | | | |
+| 20 | | | | | | | | | | | |
+| 21 | | | | | | | | | | | |
+| 22 | | | | | | | | | | | |
+| 23 | | | | | | | | | | | |
+| 24 | | | | | | | | | | | |
+| 25 | | | | | | | | | | | |
+| 26 | | | | | | | | | | | |
+| 27 | | | | | | | | | | | |
+| 28 | | | | | | | | | | | |
+| 29 | | | | | | | | | | | |
+| 30 | | | | | | | | | | | |
+| 31 | | | | | | | | | | | |
+| 32 | | | | | | | | | | | |
+| 33 | | | | | | | | | | | |
+| 34 | | | | | | | | | | | |
+| 35 | | | | | | | | | | | |
+| 36 | | | | | | | | | | | |
+| 37 | | | | | | | | | | | |
+| 38 | | | | | | | | | | | |
+| 39 | | | | | | | | | | | |
+| 40 | | | | | | | | | | | |
+| 41 | | | | | | | | | | | |
+| 42 | | | | | | | | | | | |
+| 43 | | | | | | | | | | | |
+| 44 | | | | | | | | | | | |
+| 45 | | | | | | | | | | | |
+| 46 | | | | | | | | | | | |
+| 47 | | | | | | | | | | | |
+| 48 | | | | | | | | | | | |
+| 49 | | | | | | | | | | | |
+| 50 | | | | | | | | | | | |
+
+## Engineering tests (do not count toward the 50)
+
+Automated tests under `__tests__/` verify deterministic parsing, including Yoruba quantity/amount separation, Nigerian English phrasing and safe rejection of unknown products. Record API health checks and device/build checks in the release notes, not as real-user validation.

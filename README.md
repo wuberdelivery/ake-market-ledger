@@ -1,22 +1,114 @@
 # AKE Market Ledger
 
-> **Voice-First Mobile Ledger for African Markets, Powered by N-ATLaS**
+> Voice-first, offline-first bookkeeping for Nigerian micro-merchants, powered by the official N-ATLaS speech-recognition models.
 
-## Overview
-AKE Market Ledger is a localized, offline-first mobile application designed for micro-merchants and market traders across Nigeria. It allows users to record sales, expenses, and inventory hands-free using voice prompts in English, Nigerian Pidgin, Yoruba, Hausa, and Igbo.
+## What it does
 
-## N-ATLaS Integration
-The app integrates **N-ATLaS** (`NCAIR1/N-ATLaS`) as its primary speech-to-text and intent-parsing engine via a modular provider architecture (`sttProviders.ts`). Voice audio clips are captured via native audio hooks and securely routed to the N-ATLaS inference pipeline to extract transaction details (product, quantity, price) and auto-populate the ledger.
+AKE Market Ledger is a React Native Android/iOS application for recording sales, expenses, stock and customer debt. Core bookkeeping uses an on-device SQLite database and remains available offline. Voice sales require connectivity to the project's secure ASR gateway; if voice processing fails, the trader can retry or continue with manual entry without losing access to the ledger.
 
-> **Mandatory Attribution:** *N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.*
+Supported voice languages:
 
-## Architecture & Tech Stack
-* **Frontend:** React Native / TypeScript (`App.tsx`, `VoiceSaleScreen.tsx`)
-* **Database:** Local SQLite (`database.ts`, `ledgerRepository.ts`) with encrypted sync engine.
-* **Voice Pipeline:** Custom audio recorder player hooked into multi-provider STT router (`sttProviders.ts`).
+- Yoruba (`NCAIR1/Yoruba-ASR`)
+- Hausa (`NCAIR1/Hausa-ASR`)
+- Igbo (`NCAIR1/Igbo-ASR`)
+- Nigerian-accented English (`NCAIR1/NigerianAccentedEnglish`)
 
-## Setup & Installation
-1. Clone the repository: `git clone https://github.com/wuberdelivery/ake-market-ledger.git`
-2. Install dependencies: `npm install`
-3. Configure your N-ATLaS API credentials in app settings or environment variables.
-4. Run mobile build: `npx react-native run-android` or `ios`.
+## Genuine N-ATLaS integration
+
+The mobile client records an AAC/M4A clip and sends it to the project gateway over HTTPS. The gateway:
+
+1. validates request size and duration;
+2. decodes audio in memory to mono 16 kHz;
+3. selects the official NCAIR ASR model for the chosen language;
+4. returns the transcript and exact model identifier; and
+5. immediately discards the audio waveform.
+
+The transcript is converted locally into a constrained sale intent. The trader must confirm the product, quantity, amount and payment status before the SQLite ledger is updated.
+
+`NCAIR1/N-ATLaS` is an 8B text-generation LLM and is **not** used as an audio endpoint. Voice input uses the official language-specific N-ATLaS ASR repositories listed above.
+
+> **Attribution:** N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy and is powered by Awarri Technologies. The ASR models are published by the National Centre for Artificial Intelligence and Robotics (NCAIR) in partnership with Awarri Technologies.
+
+## Architecture
+
+```text
+Android/iOS app
+  ├─ microphone permission + native AAC recorder
+  ├─ HTTPS multipart upload
+  ├─ deterministic local sale-intent parser
+  └─ local SQLite ledger (offline-first)
+              │
+              ▼
+https://wuber.com.ng/ake-ledger/
+  └─ FastAPI ASR gateway (single process, loopback behind Nginx)
+       ├─ in-memory audio decode; no audio retention
+       ├─ request size/duration/rate limits
+       └─ lazy-load one official N-ATLaS ASR model at a time
+```
+
+Important source paths:
+
+- `screens/VoiceSaleScreen.tsx` — voice UX, confirmation and recovery
+- `voice/voiceRouter.ts` — microphone permission, recording and intent routing
+- `voice/sttProviders.ts` — typed HTTPS client for the N-ATLaS gateway
+- `voice/yorubaIntentParser.ts` — deterministic constrained intent parser
+- `server/app.py` — official N-ATLaS model gateway
+- `db/database.ts` — local schema and migrations
+- `db/ledgerRepository.ts` — transaction writes and stock/debt invariants
+
+## Mobile development
+
+Prerequisites: Node.js 18+, JDK 17 and the Android SDK.
+
+```bash
+npm ci
+npm run typecheck
+npm test -- --runInBand
+npm run lint
+
+# Android debug build
+export ANDROID_HOME="$HOME/Android/Sdk"
+export JAVA_HOME=/path/to/jdk17
+cd android
+./gradlew assembleDebug
+```
+
+Release signing values are read from the operator's private Gradle properties and are never committed.
+
+## VPS deployment
+
+The gateway is designed for Ubuntu 24.04 with Python 3.12, Nginx and PM2. A CPU VPS with 8–12 GB RAM can keep one Whisper Small model resident. It does not require a GPU for a short demonstration, although a GPU or managed inference endpoint is recommended at scale.
+
+Before deployment, sign in to Hugging Face, accept the terms for each required NCAIR model, and create a fine-grained read token.
+
+```bash
+bash server/setup_vps.sh
+cp server/.env.example server/.env
+chmod 600 server/.env
+# Edit HF_TOKEN locally on the server; never commit it.
+
+pm2 start server/ecosystem.config.cjs
+pm2 save
+bash server/install_nginx.sh   # prompts for sudo
+curl https://wuber.com.ng/ake-ledger/health
+```
+
+See `server/README.md` for the endpoint contract.
+
+## Privacy and safety
+
+- Raw voice audio is decoded in memory and not written to application storage.
+- The Hugging Face credential exists only in `server/.env` on the VPS.
+- The APK contains no N-ATLaS provider credential.
+- The service accepts clips no longer than 31 seconds and no larger than 8 MB.
+- The user sees and confirms the interpreted transaction before it is committed.
+- Low-confidence or incomplete intents fall back to editable manual entry.
+- The local ledger works without network access; only cloud voice transcription requires connectivity.
+
+## Validation
+
+NAIC Voice-First Access requires at least 50 documented **real-user interactions**. Synthetic parser tests are useful engineering evidence but do not replace that requirement. `VALIDATION_LOG.md` is the evidence template and must contain truthful, consent-safe results from actual sessions before submission.
+
+## License and model terms
+
+Review and comply with the terms displayed in each gated NCAIR model repository. The published model terms include attribution and active-user limitations. Commercial or larger-scale use may require a separate agreement with Awarri Technologies/NCAIR.

@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, touch, radius, type } from './theme';
+import { colors, touch, radius } from './theme';
 
 interface Props {
   onKey: (digit: string) => void;

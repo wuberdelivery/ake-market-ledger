@@ -9,7 +9,7 @@
 //   Step 4: big spoken/visual confirm → save
 // ============================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, Pressable, Image, FlatList, StyleSheet,
 } from 'react-native';

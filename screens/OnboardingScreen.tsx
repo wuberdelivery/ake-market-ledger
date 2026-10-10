@@ -11,11 +11,10 @@
 
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
+  View, Text, TextInput, Pressable, StyleSheet,
 } from 'react-native';
 import { colors, spacing, radius, touch } from '../ui/theme';
 import NumberPad from '../ui/NumberPad';
-import { t } from '../i18n/labels';
 import type { Language } from '../models/types';
 import { createOwner, createFixedCost } from '../db/setupRepository';
 

@@ -1,0 +1,8 @@
+av>=13,<17
+fastapi>=0.115,<1
+huggingface-hub>=0.27,<2
+numpy>=1.26,<3
+python-multipart>=0.0.18,<1
+safetensors>=0.4,<1
+transformers>=4.48,<6
+uvicorn[standard]>=0.34,<1

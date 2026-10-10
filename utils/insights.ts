@@ -5,7 +5,6 @@
 // ============================================================
 
 import { getDb } from '../db/database';
-import { t } from '../i18n/labels';
 import type { Language } from '../models/types';
 
 export interface LowStockItem {

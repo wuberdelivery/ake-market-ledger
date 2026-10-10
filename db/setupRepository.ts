@@ -168,7 +168,11 @@ export function updateProduct(id: string, p: Partial<ProductInput>): void {
     vals.push(id);
     tx.execute(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, vals);
 
-    const { photoPath, voiceAliases, ...syncable } = p;
+    // Device-local photo paths and voice aliases are deliberately excluded
+    // from the sync payload.
+    const syncable = Object.fromEntries(
+      Object.entries(p).filter(([key]) => key !== 'photoPath' && key !== 'voiceAliases')
+    );
     outboxRow(tx, 'PRODUCT', id, 'UPDATE',
       { product_id: id, changes: syncable, updated_at: now }, seq, now);
   });

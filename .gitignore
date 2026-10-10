@@ -52,6 +52,15 @@ yarn-error.log
 **/fastlane/screenshots
 **/fastlane/test_output
 
+# AKE Ledger ASR server secrets and local Python environment
+server/.env
+server/.venv/
+server/__pycache__/
+*.pyc
+
+# Locally signed release artifacts (publish via the submission portal/release)
+releases/
+
 # Bundle artifact
 *.jsbundle
 
