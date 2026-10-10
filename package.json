@@ -1,13 +1,14 @@
 {
   "name": "AkeLedger",
-  "version": "0.0.1",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test -- --runInBand && npm run lint",
+    "check:migration": "python3 scripts/check_schema_v3.py",
+    "check": "npm run typecheck && npm test -- --runInBand && npm run check:migration && npm run lint",
     "start": "react-native start",
     "test": "jest"
   },

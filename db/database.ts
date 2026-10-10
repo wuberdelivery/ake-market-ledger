@@ -4,8 +4,8 @@
 //   npm i react-native-quick-sqlite react-native-get-random-values
 // ============================================================
 
-import { open, QuickSQLiteConnection } from 'react-native-quick-sqlite';
-import { uuidv4 } from '../models/types';
+import {open, QuickSQLiteConnection} from 'react-native-quick-sqlite';
+import {uuidv4} from '../models/types';
 
 const DB_NAME = 'ake_ledger.db';
 let db: QuickSQLiteConnection | null = null;
@@ -16,7 +16,7 @@ let db: QuickSQLiteConnection | null = null;
 // Migration 1 mirrors schema.sql (kept inline so the app is
 // self-contained and needs no asset file reads at boot).
 // ------------------------------------------------------------
-const MIGRATIONS: { version: number; statements: string[] }[] = [
+const MIGRATIONS: {version: number; statements: string[]}[] = [
   {
     version: 1,
     statements: [
@@ -277,19 +277,171 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
         FROM v_period_summary GROUP BY year;`,
     ],
   },
+  {
+    version: 3,
+    statements: [
+      // One receipt can now own several immutable sale transactions. Existing
+      // transactions remain valid because both new columns are nullable.
+      `CREATE TABLE IF NOT EXISTS sale_groups (
+        id TEXT PRIMARY KEY,
+        receipt_number TEXT NOT NULL UNIQUE,
+        customer_id TEXT REFERENCES customers(id),
+        total_amount_kobo INTEGER NOT NULL CHECK(total_amount_kobo >= 0),
+        amount_paid_kobo INTEGER NOT NULL CHECK(amount_paid_kobo >= 0),
+        status TEXT NOT NULL CHECK(status IN ('PAID','DEBT')),
+        note TEXT,
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL,
+        device_id TEXT NOT NULL,
+        device_seq INTEGER NOT NULL,
+        input_method TEXT NOT NULL DEFAULT 'TOUCH',
+        voice_confidence REAL,
+        UNIQUE(device_id, device_seq)
+      );`,
+      `ALTER TABLE transactions ADD COLUMN sale_group_id TEXT REFERENCES sale_groups(id);`,
+      `ALTER TABLE transactions ADD COLUMN sale_line_index INTEGER;`,
+      `CREATE INDEX IF NOT EXISTS idx_tx_sale_group ON transactions(sale_group_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_tx_created_at ON transactions(created_at DESC);`,
+      `CREATE INDEX IF NOT EXISTS idx_tx_reversal ON transactions(reversal_of);`,
+      `INSERT OR IGNORE INTO app_settings (key, value) VALUES ('session_locked', '0');`,
+
+      // Rebuild reporting views so a reversed entry no longer affects cash,
+      // profit, expense, sales-count, or customer-debt reporting.
+      `DROP VIEW IF EXISTS v_yearly_summary;`,
+      `DROP VIEW IF EXISTS v_monthly_summary;`,
+      `DROP VIEW IF EXISTS v_weekly_summary;`,
+      `DROP VIEW IF EXISTS v_period_summary;`,
+      `DROP VIEW IF EXISTS v_daily_net_profit;`,
+      `DROP VIEW IF EXISTS v_daily_summary;`,
+      `DROP VIEW IF EXISTS v_customer_debts;`,
+      `DROP VIEW IF EXISTS v_expense_breakdown;`,
+
+      `CREATE VIEW v_customer_debts AS
+        SELECT c.id AS customer_id, c.name AS customer_name,
+          c.phone_number AS phone_number,
+          SUM(CASE
+            WHEN t.category='SALE' THEN t.total_amount_kobo - t.amount_paid_kobo
+            WHEN t.category='DEBT_PAYMENT' THEN -t.amount_paid_kobo
+            ELSE 0 END) AS balance_kobo,
+          MAX(t.created_at) AS last_activity_at
+        FROM customers c
+        JOIN transactions t ON t.customer_id = c.id
+        WHERE t.category IN ('SALE','DEBT_PAYMENT')
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions r
+            WHERE r.reversal_of=t.id
+          )
+        GROUP BY c.id
+        HAVING balance_kobo > 0;`,
+
+      `CREATE VIEW v_daily_summary AS
+        SELECT DATE(t.created_at) AS day,
+          SUM(CASE WHEN t.type='INFLOW' THEN t.amount_paid_kobo ELSE 0 END) AS cash_in_kobo,
+          SUM(CASE WHEN t.type='OUTFLOW' THEN t.total_amount_kobo ELSE 0 END) AS cash_out_kobo,
+          SUM(CASE WHEN t.category='SALE'
+                   THEN t.total_amount_kobo -
+                        CAST(t.quantity * IFNULL(p.cost_price_kobo,0) AS INTEGER)
+                   ELSE 0 END) AS gross_profit_kobo,
+          SUM(CASE WHEN t.category='EXPENSE' THEN t.total_amount_kobo ELSE 0 END) AS expenses_kobo,
+          COUNT(DISTINCT CASE WHEN t.category='SALE'
+            THEN COALESCE(t.sale_group_id, t.id) END) AS sales_count
+        FROM transactions t
+        LEFT JOIN products p ON p.id = t.product_id
+        WHERE t.category <> 'REVERSAL'
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions r
+            WHERE r.reversal_of=t.id
+          )
+        GROUP BY DATE(t.created_at);`,
+
+      `CREATE VIEW v_expense_breakdown AS
+        SELECT DATE(t.created_at) AS day,
+          IFNULL(t.expense_type,'OTHER') AS expense_type,
+          SUM(t.total_amount_kobo) AS total_kobo,
+          COUNT(*) AS entries
+        FROM transactions t
+        WHERE t.type='OUTFLOW' AND t.category='EXPENSE'
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions r WHERE r.reversal_of=t.id
+          )
+        GROUP BY DATE(t.created_at), IFNULL(t.expense_type,'OTHER');`,
+
+      `CREATE VIEW v_daily_net_profit AS
+        SELECT d.day, d.cash_in_kobo, d.cash_out_kobo,
+          d.gross_profit_kobo,
+          d.expenses_kobo AS variable_expenses_kobo,
+          IFNULL((SELECT SUM(daily_kobo) FROM v_fixed_cost_daily),0) AS fixed_daily_kobo,
+          d.gross_profit_kobo - d.expenses_kobo
+            - IFNULL((SELECT SUM(daily_kobo) FROM v_fixed_cost_daily),0) AS net_profit_kobo,
+          d.sales_count
+        FROM v_daily_summary d;`,
+
+      `CREATE VIEW v_period_summary AS
+        SELECT DATE(t.created_at) AS day,
+          strftime('%Y-%W', t.created_at) AS week,
+          strftime('%Y-%m', t.created_at) AS month,
+          strftime('%Y', t.created_at) AS year,
+          SUM(CASE WHEN t.type='INFLOW' THEN t.amount_paid_kobo ELSE 0 END) AS cash_in_kobo,
+          SUM(CASE WHEN t.type='OUTFLOW' AND t.category='EXPENSE'
+                   THEN t.total_amount_kobo ELSE 0 END) AS expenses_kobo,
+          SUM(CASE WHEN t.category='SALE'
+                   THEN t.total_amount_kobo -
+                        CAST(t.quantity * IFNULL(p.cost_price_kobo,0) AS INTEGER)
+                   ELSE 0 END) AS gross_profit_kobo,
+          COUNT(DISTINCT CASE WHEN t.category='SALE'
+            THEN COALESCE(t.sale_group_id, t.id) END) AS sales_count
+        FROM transactions t
+        LEFT JOIN products p ON p.id = t.product_id
+        WHERE t.category <> 'REVERSAL'
+          AND NOT EXISTS (
+            SELECT 1 FROM transactions r
+            WHERE r.reversal_of=t.id
+          )
+        GROUP BY DATE(t.created_at);`,
+
+      `CREATE VIEW v_weekly_summary AS
+        SELECT week,
+          SUM(cash_in_kobo) AS cash_in_kobo,
+          SUM(expenses_kobo) AS expenses_kobo,
+          SUM(gross_profit_kobo) AS gross_profit_kobo,
+          SUM(gross_profit_kobo) - SUM(expenses_kobo) AS net_before_fixed_kobo,
+          SUM(sales_count) AS sales_count,
+          MIN(day) AS from_day, MAX(day) AS to_day
+        FROM v_period_summary GROUP BY week;`,
+      `CREATE VIEW v_monthly_summary AS
+        SELECT month,
+          SUM(cash_in_kobo) AS cash_in_kobo,
+          SUM(expenses_kobo) AS expenses_kobo,
+          SUM(gross_profit_kobo) AS gross_profit_kobo,
+          SUM(gross_profit_kobo) - SUM(expenses_kobo) AS net_before_fixed_kobo,
+          SUM(sales_count) AS sales_count,
+          MIN(day) AS from_day, MAX(day) AS to_day
+        FROM v_period_summary GROUP BY month;`,
+      `CREATE VIEW v_yearly_summary AS
+        SELECT year,
+          SUM(cash_in_kobo) AS cash_in_kobo,
+          SUM(expenses_kobo) AS expenses_kobo,
+          SUM(gross_profit_kobo) AS gross_profit_kobo,
+          SUM(gross_profit_kobo) - SUM(expenses_kobo) AS net_before_fixed_kobo,
+          SUM(sales_count) AS sales_count,
+          MIN(day) AS from_day, MAX(day) AS to_day
+        FROM v_period_summary GROUP BY year;`,
+    ],
+  },
 ];
 
 // ------------------------------------------------------------
 // Bootstrap
 // ------------------------------------------------------------
 export function getDb(): QuickSQLiteConnection {
-  if (!db) throw new Error('Database not initialized — call initDatabase() first');
+  if (!db)
+    throw new Error('Database not initialized — call initDatabase() first');
   return db;
 }
 
 export async function initDatabase(): Promise<QuickSQLiteConnection> {
   if (db) return db;
-  db = open({ name: DB_NAME });
+  db = open({name: DB_NAME});
 
   db.execute('PRAGMA journal_mode = WAL;');
   db.execute('PRAGMA foreign_keys = ON;');
@@ -303,7 +455,7 @@ export async function initDatabase(): Promise<QuickSQLiteConnection> {
 function currentVersion(conn: QuickSQLiteConnection): number {
   try {
     const r = conn.execute(
-      `SELECT value FROM schema_meta WHERE key='schema_version'`
+      `SELECT value FROM schema_meta WHERE key='schema_version'`,
     );
     return r.rows?.length ? parseInt(r.rows.item(0).value, 10) : 0;
   } catch {
@@ -314,7 +466,7 @@ function currentVersion(conn: QuickSQLiteConnection): number {
 function runMigrations(conn: QuickSQLiteConnection): void {
   const from = currentVersion(conn);
   const pending = MIGRATIONS.filter(m => m.version > from).sort(
-    (a, b) => a.version - b.version
+    (a, b) => a.version - b.version,
   );
   for (const m of pending) {
     conn.transaction(tx => {
@@ -322,7 +474,7 @@ function runMigrations(conn: QuickSQLiteConnection): void {
       tx.execute(
         `INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-        [String(m.version)]
+        [String(m.version)],
       );
     });
   }
@@ -332,10 +484,10 @@ function runMigrations(conn: QuickSQLiteConnection): void {
 function ensureDeviceIdentity(conn: QuickSQLiteConnection): void {
   conn.execute(
     `INSERT OR IGNORE INTO device_state (key, value) VALUES ('device_id', ?)`,
-    [`DEV-${uuidv4()}`]
+    [`DEV-${uuidv4()}`],
   );
   conn.execute(
-    `INSERT OR IGNORE INTO device_state (key, value) VALUES ('seq_counter', '0')`
+    `INSERT OR IGNORE INTO device_state (key, value) VALUES ('seq_counter', '0')`,
   );
 }
 
@@ -345,7 +497,9 @@ export function nextDeviceSeq(): number {
   const conn = getDb();
   let next = 0;
   conn.transaction(tx => {
-    const r = tx.execute(`SELECT value FROM device_state WHERE key='seq_counter'`);
+    const r = tx.execute(
+      `SELECT value FROM device_state WHERE key='seq_counter'`,
+    );
     next = parseInt(r.rows!.item(0).value, 10) + 1;
     tx.execute(`UPDATE device_state SET value=? WHERE key='seq_counter'`, [
       String(next),
@@ -355,6 +509,8 @@ export function nextDeviceSeq(): number {
 }
 
 export function getDeviceId(): string {
-  const r = getDb().execute(`SELECT value FROM device_state WHERE key='device_id'`);
+  const r = getDb().execute(
+    `SELECT value FROM device_state WHERE key='device_id'`,
+  );
   return r.rows!.item(0).value as string;
 }

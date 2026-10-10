@@ -22,6 +22,13 @@ interface TranscribeArgs {
   timeoutMs?: number;
 }
 
+let activeController: AbortController | null = null;
+
+export function cancelActiveTranscription(): void {
+  activeController?.abort();
+  activeController = null;
+}
+
 export class SttError extends Error {
   readonly status: number | null;
 
@@ -46,6 +53,7 @@ export async function transcribe({
   } as any);
 
   const controller = new AbortController();
+  activeController = controller;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const headers: Record<string, string> = {};
   if (N_ATLAS_CLIENT_TOKEN) {
@@ -103,5 +111,8 @@ export async function transcribe({
     );
   } finally {
     clearTimeout(timer);
+    if (activeController === controller) {
+      activeController = null;
+    }
   }
 }

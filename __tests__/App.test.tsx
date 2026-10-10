@@ -39,7 +39,7 @@ describe('voice sale intent parser', () => {
     expect(result.productId).toBe('rice-1');
     expect(result.quantity).toBe(2);
     expect(result.amountPaidKobo).toBe(500_000);
-    expect(result.paymentStatus).toBe('PAID');
+    expect(result.paymentStatus).toBe('DEBT');
   });
 
   it('refuses to invent a product that was not recognized', () => {

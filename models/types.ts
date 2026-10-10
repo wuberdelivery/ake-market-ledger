@@ -167,6 +167,8 @@ export interface Transaction {
   sellUnitId: string | null;    // which sell unit (cup/mudu) was used
   sellUnitLabel: string | null; // snapshot for history/receipts
   sellUnitCount: number | null; // how many of that unit (3 cups)
+  saleGroupId?: string | null;  // receipt that owns this line (schema v3+)
+  saleLineIndex?: number | null;
   createdAt: string;
   deviceSeq: number;
 }

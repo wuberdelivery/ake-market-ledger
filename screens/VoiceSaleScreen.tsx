@@ -4,7 +4,7 @@
 // Failures remain recoverable: retry voice or continue manually.
 // ============================================================
 
-import React, { useRef, useState } from 'react';
+import React, {useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,11 +12,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { colors, spacing, radius, touch } from '../ui/theme';
-import { t } from '../i18n/labels';
-import type { Language, Product, Customer } from '../models/types';
-import { InputMethod } from '../models/types';
-import { recordSale } from '../db/ledgerRepository';
+import {colors, spacing, radius, touch} from '../ui/theme';
+import {t} from '../i18n/labels';
+import type {Language, Product, Customer} from '../models/types';
+import {InputMethod} from '../models/types';
+import {recordSale} from '../db/ledgerRepository';
 import {
   startRecording,
   stopRecordingAndProcess,
@@ -25,7 +25,7 @@ import {
   buildConfirmationSpeech,
   VoiceResult,
 } from '../voice/voiceRouter';
-import type { SaleIntent } from '../voice/yorubaIntentParser';
+import type {SaleIntent} from '../voice/yorubaIntentParser';
 
 type Phase = 'READY' | 'RECORDING' | 'PROCESSING' | 'CONFIRM' | 'FALLBACK';
 
@@ -56,11 +56,12 @@ export default function VoiceSaleScreen({
   const startPromise = useRef<Promise<boolean> | null>(null);
 
   const product = intent?.productId
-    ? products.find(p => p.id === intent.productId) ?? null
+    ? (products.find(p => p.id === intent.productId) ?? null)
     : null;
-  const totalKobo = product && intent?.quantity
-    ? Math.round(product.sellingPriceKobo * intent.quantity)
-    : 0;
+  const totalKobo =
+    product && intent?.quantity
+      ? Math.round(product.sellingPriceKobo * intent.quantity)
+      : 0;
 
   const beginHold = () => {
     setErrorMessage('');
@@ -97,7 +98,9 @@ export default function VoiceSaleScreen({
         return;
       }
       setPhase('CONFIRM');
-      const matchedProduct = products.find(x => x.id === result.intent.productId)!;
+      const matchedProduct = products.find(
+        x => x.id === result.intent.productId,
+      )!;
       const total = Math.round(
         matchedProduct.sellingPriceKobo * (result.intent.quantity ?? 1),
       );
@@ -156,13 +159,18 @@ export default function VoiceSaleScreen({
           onPress={() => {
             cancelRecording();
             onCancel();
-          }}
-        >
+          }}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
 
         <Text style={styles.provider}>N-ATLaS • NCAIR / Awarri</Text>
-        <Text style={styles.hint}>{t(lang, 'prompt.hold_and_speak')}</Text>
+        <Text style={styles.hint}>
+          {phase === 'RECORDING'
+            ? t(lang, 'voice.listening')
+            : phase === 'PROCESSING'
+              ? t(lang, 'voice.processing')
+              : t(lang, 'prompt.hold_and_speak')}
+        </Text>
 
         {phase === 'PROCESSING' ? (
           <View style={styles.micBtn}>
@@ -173,8 +181,7 @@ export default function VoiceSaleScreen({
           <Pressable
             style={[styles.micBtn, phase === 'RECORDING' && styles.micActive]}
             onPressIn={beginHold}
-            onPressOut={endHold}
-          >
+            onPressOut={endHold}>
             <Text style={styles.micIcon}>🎤</Text>
           </Pressable>
         )}
@@ -193,37 +200,58 @@ export default function VoiceSaleScreen({
       <View style={styles.screen}>
         <Text style={styles.provider}>✓ {model}</Text>
         <View style={styles.card}>
+          <Text style={styles.reviewLabel}>{t(lang, 'voice.recognized')}</Text>
+          <Text style={styles.cardTranscript}>“{transcript}”</Text>
+          <View style={styles.reviewDivider} />
+          <Text style={styles.reviewLabel}>{t(lang, 'voice.interpreted')}</Text>
           <Text style={styles.cardProduct}>{product.name}</Text>
           <Text style={styles.cardQty}>× {intent.quantity}</Text>
+          <Text style={styles.amountLabel}>{t(lang, 'sale.total')}</Text>
           <Text style={styles.cardTotal}>
             ₦{(totalKobo / 100).toLocaleString('en-NG')}
+          </Text>
+          <Text style={styles.amountLabel}>{t(lang, 'history.paid')}</Text>
+          <Text style={styles.cardPaid}>
+            ₦{(paid / 100).toLocaleString('en-NG')}
           </Text>
           <Text
             style={[
               styles.cardStatus,
-              { color: isDebt ? colors.debtTag : colors.paidTag },
-            ]}
-          >
-            {isDebt ? t(lang, 'label.debt') : t(lang, 'label.paid')}
+              {color: isDebt ? colors.debtTag : colors.paidTag},
+            ]}>
+            {isDebt
+              ? `${t(lang, 'label.debt')}: ₦${((totalKobo - paid) / 100).toLocaleString('en-NG')}`
+              : t(lang, 'label.paid')}
           </Text>
-          <Text style={styles.cardTranscript}>“{transcript}”</Text>
+          <Text style={styles.reviewWarning}>
+            {t(lang, 'voice.review_hint')}
+          </Text>
         </View>
 
         <View style={styles.decisionRow}>
           <Pressable
-            style={[styles.decisionBtn, { backgroundColor: colors.moneyOut }]}
+            style={[styles.decisionBtn, styles.retryDecision]}
             onPress={() => {
               setIntent(null);
               setPhase('READY');
-            }}
-          >
-            <Text style={styles.decisionIcon}>👎</Text>
+            }}>
+            <Text style={styles.retryDecisionText}>
+              ↻ {t(lang, 'voice.retry')}
+            </Text>
           </Pressable>
           <Pressable
-            style={[styles.decisionBtn, { backgroundColor: colors.moneyIn }]}
-            onPress={commit}
-          >
-            <Text style={styles.decisionIcon}>👍</Text>
+            style={[styles.decisionBtn, styles.editDecision]}
+            onPress={() => onManualFallback(intent)}>
+            <Text style={styles.editDecisionText}>
+              ✎ {t(lang, 'voice.edit')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.decisionBtn, styles.saveDecision]}
+            onPress={commit}>
+            <Text style={styles.saveDecisionText}>
+              ✓ {t(lang, 'action.save')}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -240,16 +268,14 @@ export default function VoiceSaleScreen({
           onPress={() => {
             setErrorMessage('');
             setPhase('READY');
-          }}
-        >
+          }}>
           <Text style={styles.retryText}>
             {lang === 'yo' ? 'Tún gbìyànjú' : 'Try again'}
           </Text>
         </Pressable>
         <Pressable
           style={styles.manualBtn}
-          onPress={() => onManualFallback(intent ?? undefined)}
-        >
+          onPress={() => onManualFallback(intent ?? undefined)}>
           <Text style={styles.manualText}>
             {lang === 'yo' ? 'Tẹ̀ ẹ́ lọ́wọ́' : 'Enter manually'}
           </Text>
@@ -276,7 +302,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { color: colors.white, fontSize: 28, fontWeight: '800' },
+  closeText: {color: colors.white, fontSize: 28, fontWeight: '800'},
   provider: {
     color: '#DFF5E4',
     fontSize: 13,
@@ -301,9 +327,9 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: colors.white,
   },
-  micActive: { backgroundColor: colors.moneyOut, transform: [{ scale: 1.12 }] },
-  micIcon: { fontSize: 64 },
-  processingText: { color: colors.white, fontWeight: '800', marginTop: 8 },
+  micActive: {backgroundColor: colors.moneyOut, transform: [{scale: 1.12}]},
+  micIcon: {fontSize: 64},
+  processingText: {color: colors.white, fontWeight: '800', marginTop: 8},
   example: {
     color: '#DFF5E4',
     fontSize: 15,
@@ -318,27 +344,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-  cardProduct: { fontSize: 26, fontWeight: '800', color: colors.ink },
-  cardQty: { fontSize: 40, fontWeight: '800', color: colors.ink, marginVertical: 4 },
-  cardTotal: { fontSize: 36, fontWeight: '800', color: colors.moneyIn },
-  cardStatus: { fontSize: 20, fontWeight: '800', marginTop: 6 },
-  cardTranscript: {
-    fontSize: 13,
+  reviewLabel: {
+    fontSize: 12,
+    fontWeight: '800',
     color: colors.inkSoft,
-    marginTop: spacing.md,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  reviewDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
+  },
+  cardProduct: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.ink,
+    marginTop: 3,
+  },
+  cardQty: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.ink,
+    marginVertical: 2,
+  },
+  amountLabel: {
+    fontSize: 12,
+    color: colors.inkSoft,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  cardTotal: {fontSize: 29, fontWeight: '800', color: colors.ink},
+  cardPaid: {fontSize: 29, fontWeight: '800', color: colors.moneyIn},
+  cardStatus: {fontSize: 17, fontWeight: '800', marginTop: 4},
+  cardTranscript: {
+    fontSize: 15,
+    color: colors.ink,
+    marginTop: 4,
     fontStyle: 'italic',
     textAlign: 'center',
   },
-  decisionRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.xl },
+  reviewWarning: {
+    fontSize: 12,
+    color: colors.warning,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  decisionRow: {width: '100%', gap: spacing.sm, marginTop: spacing.md},
   decisionBtn: {
-    width: 120,
-    height: 96,
-    borderRadius: radius.lg,
+    minHeight: 56,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
   },
-  decisionIcon: { fontSize: 44 },
-  fallbackIcon: { fontSize: 64 },
+  retryDecision: {borderColor: colors.white},
+  retryDecisionText: {color: colors.white, fontSize: 17, fontWeight: '800'},
+  editDecision: {borderColor: colors.white, backgroundColor: colors.white},
+  editDecisionText: {color: colors.moneyIn, fontSize: 17, fontWeight: '800'},
+  saveDecision: {
+    borderColor: colors.white,
+    backgroundColor: colors.moneyInPressed,
+  },
+  saveDecisionText: {color: colors.white, fontSize: 17, fontWeight: '800'},
+  fallbackIcon: {fontSize: 64},
   fallbackText: {
     color: colors.white,
     fontSize: 19,
@@ -346,7 +417,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: spacing.lg,
   },
-  fallbackActions: { width: '100%', gap: spacing.md },
+  fallbackActions: {width: '100%', gap: spacing.md},
   retryBtn: {
     backgroundColor: colors.white,
     borderRadius: radius.md,
@@ -355,7 +426,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  retryText: { color: colors.moneyIn, fontSize: 18, fontWeight: '800' },
+  retryText: {color: colors.moneyIn, fontSize: 18, fontWeight: '800'},
   manualBtn: {
     borderColor: colors.white,
     borderWidth: 2,
@@ -365,5 +436,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
   },
-  manualText: { color: colors.white, fontSize: 18, fontWeight: '800' },
+  manualText: {color: colors.white, fontSize: 18, fontWeight: '800'},
 });

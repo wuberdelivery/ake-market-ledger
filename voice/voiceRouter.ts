@@ -13,7 +13,11 @@ import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import Tts from 'react-native-tts';
 import type { Language, Product } from '../models/types';
 import { parseSaleIntent, SaleIntent } from './yorubaIntentParser';
-import { SttError, transcribe } from './sttProviders';
+import {
+  cancelActiveTranscription,
+  SttError,
+  transcribe,
+} from './sttProviders';
 
 const STT_TIMEOUT_MS = 120000; // CPU inference may cold-start the model.
 const recorder = new AudioRecorderPlayer();
@@ -122,6 +126,7 @@ export async function stopRecordingAndProcess(
 }
 
 export async function cancelRecording(): Promise<void> {
+  cancelActiveTranscription();
   if (!currentPath) {
     return;
   }

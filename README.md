@@ -4,14 +4,18 @@
 
 ## What it does
 
-AKE Market Ledger is a React Native Android/iOS application for recording sales, expenses, stock and customer debt. Core bookkeeping uses an on-device SQLite database and remains available offline. Voice sales require connectivity to the project's secure ASR gateway; if voice processing fails, the trader can retry or continue with manual entry without losing access to the ledger.
+AKE Market Ledger is a React Native Android/iOS application for recording multi-item sales, expenses, stock and customer debt. Core bookkeeping uses an on-device SQLite database and remains available offline. Voice sales require connectivity to the project's secure ASR gateway; if voice processing fails, the trader can retry or continue with editable manual entry without losing access to the ledger.
 
-Supported voice languages:
+Version 1.1 adds atomic grouped receipts, an editable cart and recoverable per-user drafts, searchable transaction history with immutable correction, reversal-aware reports, visible voice activation, persistent language Settings, and explicit user switching/logout. Schema migration v3 preserves existing rows; it only adds receipt metadata and nullable links.
+
+Configured official voice-model mappings:
 
 - Yoruba (`NCAIR1/Yoruba-ASR`)
 - Hausa (`NCAIR1/Hausa-ASR`)
 - Igbo (`NCAIR1/Igbo-ASR`)
 - Nigerian-accented English (`NCAIR1/NigerianAccentedEnglish`)
+
+These mappings are not an accuracy claim. The current deployment has been performance-verified end to end only for the official Yoruba model. Hausa, Igbo, and Nigerian-accented English voice paths remain unverified until genuine speech is tested; manual bookkeeping remains available for every app language.
 
 ## Genuine N-ATLaS integration
 
@@ -64,6 +68,7 @@ Prerequisites: Node.js 18+, JDK 17 and the Android SDK.
 npm ci
 npm run typecheck
 npm test -- --runInBand
+npm run check:migration
 npm run lint
 
 # Android debug build
@@ -74,6 +79,14 @@ cd android
 ```
 
 Release signing values are read from the operator's private Gradle properties and are never committed.
+
+Current signed Android release:
+
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.0-v4.apk`
+- QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.0-APK-QR.png`
+- SHA-256: `89822e2194b3ac0cf42baf1be4176a0a02da682300700df40ebf0de8486023c3`
+
+See `PRODUCT_HARDENING_REPORT.md` and `DEVICE_SMOKE_TEST_V1.1.md` for implementation decisions, verified checks, and the remaining physical-phone gate.
 
 ## VPS deployment
 
