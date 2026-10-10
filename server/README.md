@@ -14,9 +14,10 @@ It does **not** send audio to the separate `NCAIR1/N-ATLaS` 8B text LLM. Audio i
 1. Accept the model terms on Hugging Face.
 2. Run `bash server/setup_vps.sh`.
 3. Copy `server/.env.example` to `server/.env` and set a fine-grained Hugging Face read token.
-4. Start with `pm2 start server/ecosystem.config.cjs && pm2 save`.
-5. Run `bash server/install_nginx.sh` and enter the VPS sudo password.
-6. Check `https://wuber.com.ng/ake-ledger/health`.
+4. Run `bash server/convert_yoruba_int8.sh` to convert the official cached model weights to a CPU-optimized INT8 runtime.
+5. Start with `pm2 start server/ecosystem.config.cjs && pm2 save`.
+6. Run `bash server/install_nginx.sh` and enter the VPS sudo password.
+7. Check `https://wuber.com.ng/ake-ledger/health`.
 
 ## API
 

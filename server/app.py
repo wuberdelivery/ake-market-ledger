@@ -16,6 +16,7 @@ import secrets
 import threading
 import time
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import Any
 
 import av
@@ -25,7 +26,11 @@ from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
+SERVER_DIR = Path(__file__).resolve().parent
+FAST_MODEL_DIRS = {
+    "yo": SERVER_DIR / "models" / "yoruba-asr-int8",
+}
 MAX_AUDIO_BYTES = int(os.getenv("MAX_AUDIO_BYTES", str(8 * 1024 * 1024)))
 MAX_AUDIO_SECONDS = float(os.getenv("MAX_AUDIO_SECONDS", "31"))
 RATE_LIMIT_PER_HOUR = int(os.getenv("RATE_LIMIT_PER_HOUR", "120"))
@@ -164,18 +169,19 @@ class NatlasEngine:
         self._lock = threading.Lock()
         self._language: str | None = None
         self._pipe: Any | None = None
+        self._runtime: str | None = None
 
     @property
     def loaded_language(self) -> str | None:
         return self._language
 
+    @property
+    def runtime(self) -> str | None:
+        return self._runtime
+
     def _load(self, language: str) -> None:
         if self._pipe is not None and self._language == language:
             return
-        if not HF_TOKEN:
-            raise RuntimeError("HF_TOKEN is not configured on the server")
-
-        from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
         model_id = MODEL_IDS[language]
         logger.info("Loading official N-ATLaS model %s", model_id)
@@ -183,7 +189,31 @@ class NatlasEngine:
         # Keep memory bounded when switching between languages.
         self._pipe = None
         self._language = None
+        self._runtime = None
         gc.collect()
+
+        # A CTranslate2 INT8 conversion contains the same official fine-tuned
+        # weights, optimized for practical inference on this CPU-only VPS.
+        fast_dir = FAST_MODEL_DIRS.get(language)
+        if fast_dir and (fast_dir / "model.bin").is_file():
+            from faster_whisper import WhisperModel
+
+            self._pipe = WhisperModel(
+                str(fast_dir),
+                device="cpu",
+                compute_type="int8",
+                cpu_threads=max(1, int(os.getenv("OMP_NUM_THREADS", "6"))),
+                num_workers=1,
+            )
+            self._language = language
+            self._runtime = "ctranslate2-int8"
+            logger.info("Model ready: %s (%s)", model_id, self._runtime)
+            return
+
+        if not HF_TOKEN:
+            raise RuntimeError("HF_TOKEN is not configured on the server")
+
+        from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
         processor = AutoProcessor.from_pretrained(
             model_id,
@@ -206,25 +236,44 @@ class NatlasEngine:
             device=-1,
         )
         self._language = language
-        logger.info("Model ready: %s", model_id)
+        self._runtime = "transformers-float32"
+        logger.info("Model ready: %s (%s)", model_id, self._runtime)
 
     def transcribe(self, language: str, waveform: np.ndarray) -> dict[str, Any]:
         with self._lock:
             self._load(language)
             started = time.perf_counter()
             assert self._pipe is not None
-            output = self._pipe(
-                {"array": waveform, "sampling_rate": 16000},
-                return_timestamps=False,
-            )
+
+            if self._runtime == "ctranslate2-int8":
+                segments, _info = self._pipe.transcribe(
+                    waveform,
+                    language=language,
+                    beam_size=1,
+                    best_of=1,
+                    temperature=0,
+                    condition_on_previous_text=False,
+                    without_timestamps=True,
+                    word_timestamps=False,
+                    vad_filter=False,
+                )
+                text = " ".join(segment.text.strip() for segment in segments).strip()
+            else:
+                output = self._pipe(
+                    {"array": waveform, "sampling_rate": 16000},
+                    return_timestamps=False,
+                    generate_kwargs={"max_new_tokens": 64, "num_beams": 1},
+                )
+                text = str(output.get("text", "")).strip()
+
             elapsed_ms = round((time.perf_counter() - started) * 1000)
 
-        text = str(output.get("text", "")).strip()
         return {
             "text": text,
             "transcript": text,
             "language": language,
             "model": MODEL_IDS[language],
+            "runtime": self._runtime,
             "processing_ms": elapsed_ms,
         }
 
@@ -240,6 +289,7 @@ def health() -> dict[str, Any]:
         "version": APP_VERSION,
         "hf_configured": bool(HF_TOKEN),
         "loaded_language": engine.loaded_language,
+        "runtime": engine.runtime,
         "official_models": MODEL_IDS,
         "audio_retention": "none",
     }

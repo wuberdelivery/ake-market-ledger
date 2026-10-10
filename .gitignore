@@ -55,6 +55,7 @@ yarn-error.log
 # AKE Ledger ASR server secrets and local Python environment
 server/.env
 server/.venv/
+server/models/
 server/__pycache__/
 *.pyc
 
