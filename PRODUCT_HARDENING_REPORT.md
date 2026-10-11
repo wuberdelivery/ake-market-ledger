@@ -92,10 +92,11 @@ Release: Android `1.1.4` (`versionCode 8`)
 - On 11 October 2026, a genuine Nigerian English Voice Sale recording from the test phone reached the gateway with 8.21 seconds of non-silent audio (RMS `0.14193`, peak `0.87793`) and returned HTTP 200 through the official Nigerian-accented English model's INT8 runtime.
 - The displayed transcript was `tolled two cartons of indomin a n11,000`. Although ASR spelling was imperfect, conservative alias matching correctly opened editable review for **Indomie noodles × 2**, **₦11,000**, full payment. Nothing was saved automatically.
 - This confirms the v1.1.4 microphone path, upload, official English ASR inference, typo-tolerant product matching, quantity/amount extraction, and review fallback on that physical phone.
+- A later physical-phone screenshot shows four separate persisted inventory entries (Honey Beans, Indomie noodles, Rice, and Tin tomatoes), confirming that the first-product-only transaction collision is repaired and multiple products can be added.
 
 ## Remaining validation and speech limitations
 
-- The user still needs to confirm that at least two new products can be added consecutively on v1.1.4 and complete the wider smoke test: an arbitrary non-catalog custom product through Voice Sale, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
+- The user still needs to complete the wider smoke test: an arbitrary non-catalog custom product through Voice Sale, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba. Igbo also requires a fresh genuine-speech retest after the live v1.2.3 decoding repair.
 - One successful genuine English interaction establishes functionality, not general speech accuracy. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
 - The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.
