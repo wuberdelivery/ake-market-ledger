@@ -87,11 +87,17 @@ Release: Android `1.1.4` (`versionCode 8`)
 - APK SHA-256: `c1abb6050f3e16ff4c4067f35867e7b29a79c8883d3c1f05fd5164b586a148d3`
 - AAB SHA-256: `5f65b79a5fd62daa81aebf59217b5e709f1d918fd5dc1d1a4bf0510cf2c31949`
 
+## Physical-phone result for v1.1.4
+
+- On 11 October 2026, a genuine Nigerian English Voice Sale recording from the test phone reached the gateway with 8.21 seconds of non-silent audio (RMS `0.14193`, peak `0.87793`) and returned HTTP 200 through the official Nigerian-accented English model's INT8 runtime.
+- The displayed transcript was `tolled two cartons of indomin a n11,000`. Although ASR spelling was imperfect, conservative alias matching correctly opened editable review for **Indomie noodles × 2**, **₦11,000**, full payment. Nothing was saved automatically.
+- This confirms the v1.1.4 microphone path, upload, official English ASR inference, typo-tolerant product matching, quantity/amount extraction, and review fallback on that physical phone.
+
 ## Remaining validation and speech limitations
 
-- A physical-phone smoke test of this exact v8 build is still required, including upgrading over v7 with existing data, adding at least two new products consecutively, confirming the server receives non-silent audio, saying `Indomie one carton five thousand naira` for the saved custom `Indomine carton`, comparing the displayed transcript, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
-- Genuine spoken-audio accuracy has not yet been measured. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
+- The user still needs to confirm that at least two new products can be added consecutively on v1.1.4 and complete the wider smoke test: an arbitrary non-catalog custom product through Voice Sale, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
+- One successful genuine English interaction establishes functionality, not general speech accuracy. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
 - The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.
-- The required 50 real-user interactions remain at 0/50. Parser tests and generated audio do not count.
+- The required formal validation log remains at 0/50 because participant consent/metadata has not yet been recorded. The physical interaction above is valid engineering evidence but must not be counted toward the challenge threshold without the required consent-safe documentation.
 - Hausa/Igbo translations are implementation drafts and require native-speaker review before making quality claims.
