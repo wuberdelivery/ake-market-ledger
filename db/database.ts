@@ -6,6 +6,9 @@
 
 import {open, QuickSQLiteConnection} from 'react-native-quick-sqlite';
 import {uuidv4} from '../models/types';
+import {transactionSync} from './transactionSync';
+
+export {transactionSync} from './transactionSync';
 
 const DB_NAME = 'ake_ledger.db';
 let db: QuickSQLiteConnection | null = null;
@@ -469,7 +472,7 @@ function runMigrations(conn: QuickSQLiteConnection): void {
     (a, b) => a.version - b.version,
   );
   for (const m of pending) {
-    conn.transaction(tx => {
+    transactionSync(conn, tx => {
       for (const stmt of m.statements) tx.execute(stmt);
       tx.execute(
         `INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?)
@@ -496,7 +499,7 @@ function ensureDeviceIdentity(conn: QuickSQLiteConnection): void {
 export function nextDeviceSeq(): number {
   const conn = getDb();
   let next = 0;
-  conn.transaction(tx => {
+  transactionSync(conn, tx => {
     const r = tx.execute(
       `SELECT value FROM device_state WHERE key='seq_counter'`,
     );

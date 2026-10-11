@@ -14,7 +14,7 @@
 // ============================================================
 
 import NetInfo from '@react-native-community/netinfo';
-import { getDb, getDeviceId } from '../db/database';
+import {getDb, getDeviceId, transactionSync} from '../db/database';
 
 const SYNC_URL = 'https://api.akeledger.wuberrides.com.ng/api/v1/ledger/sync'; // TODO: config
 const BATCH_SIZE = 50;
@@ -155,7 +155,7 @@ function applyServerAck(
   const processed = body.processed_ids ?? [];
   const corrections = body.conflict_corrections ?? [];
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     if (processed.length > 0) {
       const ph = processed.map(() => '?').join(',');
       tx.execute(`DELETE FROM sync_outbox WHERE event_id IN (${ph})`, processed);
@@ -188,7 +188,7 @@ function markFailed(ids: string[], error: string, poisonHead: boolean): void {
   const db = getDb();
   const ph = ids.map(() => '?').join(',');
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `UPDATE sync_outbox
           SET sync_status = CASE

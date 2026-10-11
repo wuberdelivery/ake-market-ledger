@@ -7,7 +7,7 @@
 // UI updates instantly from local state; sync happens later.
 // ============================================================
 
-import {getDb, nextDeviceSeq, getDeviceId} from './database';
+import {getDb, nextDeviceSeq, getDeviceId, transactionSync} from './database';
 import {
   InputMethod,
   PaymentStatus,
@@ -106,10 +106,12 @@ export function recordSaleBatch(
   const seq = nextDeviceSeq();
   const deviceId = getDeviceId();
   const groupId = uuidv4();
-  const receiptNumber = `AKE-${now.slice(0, 10).replace(/-/g, '')}-${String(seq).padStart(6, '0')}`;
+  const receiptNumber = `AKE-${now.slice(0, 10).replace(/-/g, '')}-${String(
+    seq,
+  ).padStart(6, '0')}`;
   let created: RecordedSaleGroup | null = null;
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     const resolved: ResolvedSaleLine[] = [];
     const consumedByProduct = new Map<string, number>();
 
@@ -375,7 +377,7 @@ export function recordBulkSale(
   const deviceId = getDeviceId();
   const txId = uuidv4();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO transactions
         (id, product_id, customer_id, user_id, type, category, quantity,
@@ -447,7 +449,7 @@ export function recordExpense(input: RecordExpenseInput): string {
   const txId = uuidv4();
   const category = input.category ?? TransactionCategory.EXPENSE;
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO transactions
         (id, product_id, customer_id, user_id, type, category, quantity,
@@ -503,9 +505,7 @@ export function recordExpense(input: RecordExpenseInput): string {
           category,
           product_id: input.productId ?? null,
           quantity_delta:
-            category === TransactionCategory.RESTOCK
-              ? (input.quantity ?? 0)
-              : 0,
+            category === TransactionCategory.RESTOCK ? input.quantity ?? 0 : 0,
           total_kobo: input.totalAmountKobo,
           created_at: now,
         }),
@@ -533,7 +533,7 @@ export function recordDebtPayment(
   const deviceId = getDeviceId();
   const txId = uuidv4();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO transactions
         (id, customer_id, user_id, type, category, quantity,
@@ -680,7 +680,7 @@ export function reverseLedgerEntry(
   const deviceId = getDeviceId();
   const reversalIds: string[] = [];
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     const result = tx.execute(
       `SELECT t.*, p.stock_mode, p.stock_quantity
          FROM transactions t

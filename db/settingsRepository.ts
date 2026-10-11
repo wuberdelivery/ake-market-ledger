@@ -1,4 +1,4 @@
-import {getDb} from './database';
+import {getDb, transactionSync} from './database';
 import type {Language} from '../models/types';
 
 export function getAppLanguage(): Language {
@@ -12,7 +12,7 @@ export function getAppLanguage(): Language {
 export function setAppLanguage(language: Language, userId?: string): void {
   const db = getDb();
   const now = new Date().toISOString();
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO app_settings (key, value) VALUES ('language', ?)
        ON CONFLICT(key) DO UPDATE SET value=excluded.value`,

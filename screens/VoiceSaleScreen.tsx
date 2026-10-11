@@ -27,7 +27,13 @@ import {
 } from '../voice/voiceRouter';
 import type {SaleIntent} from '../voice/yorubaIntentParser';
 
-type Phase = 'READY' | 'RECORDING' | 'PROCESSING' | 'CONFIRM' | 'FALLBACK';
+type Phase =
+  | 'READY'
+  | 'RECORDING'
+  | 'PROCESSING'
+  | 'REVIEW'
+  | 'CONFIRM'
+  | 'FALLBACK';
 
 interface Props {
   language: Language;
@@ -56,7 +62,7 @@ export default function VoiceSaleScreen({
   const startPromise = useRef<Promise<boolean> | null>(null);
 
   const product = intent?.productId
-    ? (products.find(p => p.id === intent.productId) ?? null)
+    ? products.find(p => p.id === intent.productId) ?? null
     : null;
   const totalKobo =
     product && intent?.quantity
@@ -93,8 +99,15 @@ export default function VoiceSaleScreen({
       setModel(result.model);
 
       if (result.intent.missing.length > 0 || result.intent.confidence < 0.6) {
-        // Never guess with a trader's money. Continue with editable fields.
-        onManualFallback(result.intent);
+        // Always show what ASR returned before asking the trader to correct it.
+        // Redirecting immediately made a successful transcription look as if
+        // voice had produced no result.
+        setErrorMessage(
+          lang === 'yo'
+            ? 'A gbọ́ ọ̀rọ̀ náà, ṣùgbọ́n ó nílò àtúnṣe kí a tó fi pamọ́.'
+            : 'Speech was received, but some details need correction before saving.',
+        );
+        setPhase('REVIEW');
         return;
       }
       setPhase('CONFIRM');
@@ -168,8 +181,8 @@ export default function VoiceSaleScreen({
           {phase === 'RECORDING'
             ? t(lang, 'voice.listening')
             : phase === 'PROCESSING'
-              ? t(lang, 'voice.processing')
-              : t(lang, 'prompt.hold_and_speak')}
+            ? t(lang, 'voice.processing')
+            : t(lang, 'prompt.hold_and_speak')}
         </Text>
 
         {phase === 'PROCESSING' ? (
@@ -189,6 +202,57 @@ export default function VoiceSaleScreen({
         <Text style={styles.example}>
           “Mo ta apo iresi meji, o san ẹgbẹrun mẹwa”
         </Text>
+      </View>
+    );
+  }
+
+  if (phase === 'REVIEW' && intent) {
+    const needsProduct = intent.missing.includes('product');
+    const needsQuantity = intent.missing.includes('quantity');
+    const needsAmount = intent.missing.includes('amount');
+    const correctionLabel =
+      lang === 'yo' ? 'Ó nílò àtúnṣe' : 'Needs correction';
+    return (
+      <View style={styles.screen}>
+        <Text style={styles.provider}>✓ {model}</Text>
+        <View style={styles.card}>
+          <Text style={styles.reviewLabel}>{t(lang, 'voice.recognized')}</Text>
+          <Text style={styles.cardTranscript}>“{transcript}”</Text>
+          <View style={styles.reviewDivider} />
+          <Text style={styles.reviewLabel}>{t(lang, 'voice.interpreted')}</Text>
+          <Text style={styles.cardProduct}>
+            {needsProduct
+              ? correctionLabel
+              : product?.name || intent.productName}
+          </Text>
+          <Text style={styles.cardQty}>
+            {needsQuantity ? correctionLabel : `× ${intent.quantity}`}
+          </Text>
+          <Text style={styles.amountLabel}>{t(lang, 'history.paid')}</Text>
+          <Text style={styles.cardPaid}>
+            {needsAmount || intent.amountPaidKobo === null
+              ? correctionLabel
+              : `₦${(intent.amountPaidKobo / 100).toLocaleString('en-NG')}`}
+          </Text>
+          <Text style={styles.reviewWarning}>{errorMessage}</Text>
+        </View>
+        <View style={styles.fallbackActions}>
+          <Pressable
+            style={styles.retryBtn}
+            onPress={() => {
+              setIntent(null);
+              setTranscript('');
+              setErrorMessage('');
+              setPhase('READY');
+            }}>
+            <Text style={styles.retryText}>↻ {t(lang, 'voice.retry')}</Text>
+          </Pressable>
+          <Pressable
+            style={styles.manualBtn}
+            onPress={() => onManualFallback(intent)}>
+            <Text style={styles.manualText}>✎ {t(lang, 'voice.edit')}</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -220,7 +284,10 @@ export default function VoiceSaleScreen({
               {color: isDebt ? colors.debtTag : colors.paidTag},
             ]}>
             {isDebt
-              ? `${t(lang, 'label.debt')}: ₦${((totalKobo - paid) / 100).toLocaleString('en-NG')}`
+              ? `${t(lang, 'label.debt')}: ₦${(
+                  (totalKobo - paid) /
+                  100
+                ).toLocaleString('en-NG')}`
               : t(lang, 'label.paid')}
           </Text>
           <Text style={styles.reviewWarning}>

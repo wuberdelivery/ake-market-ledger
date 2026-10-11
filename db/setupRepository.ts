@@ -4,7 +4,7 @@
 // the ledger: every write is atomic and appends an outbox event.
 // ============================================================
 
-import { getDb, nextDeviceSeq, getDeviceId } from './database';
+import {getDb, nextDeviceSeq, getDeviceId, transactionSync} from './database';
 import { uuidv4 } from '../models/types';
 import type { Language } from '../models/types';
 import { hashPin, makeSalt } from '../utils/hash';
@@ -38,7 +38,7 @@ export function createOwner(displayName: string, language: Language, pin?: strin
   const salt = pin ? makeSalt() : null;
   const pinHash = pin && salt ? hashPin(pin, salt) : null;
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO users (id, display_name, role, pin_hash, pin_salt, language, is_active, created_at, updated_at)
        VALUES (?,?,?,?,?,?,1,?,?)`,
@@ -62,7 +62,7 @@ export function createHelper(displayName: string, pin: string): string {
   const id = uuidv4();
   const salt = makeSalt();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO users (id, display_name, role, pin_hash, pin_salt, language, is_active, created_at, updated_at)
        SELECT ?, ?, 'HELPER', ?, ?, value, 1, ?, ? FROM app_settings WHERE key='language'`,
@@ -104,7 +104,7 @@ export function createProduct(p: ProductInput): string {
   const id = uuidv4();
   const mode = p.stockMode ?? 'COUNTED';
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO products
         (id, name, voice_aliases, photo_path, photo_synced, unit_label,
@@ -155,7 +155,7 @@ export function updateProduct(id: string, p: Partial<ProductInput>): void {
   const now = new Date().toISOString();
   const seq = nextDeviceSeq();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     const sets: string[] = ['updated_at = ?'];
     const vals: any[] = [now];
     if (p.name !== undefined) { sets.push('name = ?'); vals.push(p.name); }
@@ -187,7 +187,7 @@ export function createCustomer(name: string, phoneNumber?: string, note?: string
   const seq = nextDeviceSeq();
   const id = uuidv4();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO customers (id, name, phone_number, note, is_active, created_at, updated_at)
        VALUES (?,?,?,?,1,?,?)`,
@@ -215,7 +215,7 @@ export function restockProduct(
   const seq = nextDeviceSeq();
   const txId = uuidv4();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `UPDATE products SET stock_quantity = stock_quantity + ?, updated_at = ? WHERE id = ?`,
       [quantityAdded, now, productId]
@@ -274,7 +274,7 @@ export function createFixedCost(
   const seq = nextDeviceSeq();
   const id = uuidv4();
 
-  db.transaction(tx => {
+  transactionSync(db, tx => {
     tx.execute(
       `INSERT INTO fixed_costs
         (id, name, cost_type, amount_kobo, period, start_date, end_date, is_active, created_at, updated_at)

@@ -1,7 +1,7 @@
 # Ake Ledger 1.1 Product Hardening Report
 
 Date: 11 October 2026
-Release: Android `1.1.2` (`versionCode 6`)
+Release: Android `1.1.3` (`versionCode 7`)
 
 ## Root causes reproduced
 
@@ -11,6 +11,8 @@ Release: Android `1.1.2` (`versionCode 6`)
 4. **User attribution could change silently:** the dashboard refresh selected the owner on every refresh, even after a helper logged in.
 5. **Language and logout were hidden:** language was available only during onboarding and user switching depended on a long press.
 6. **Corrections did not fully leave reports:** reversals were appended, but reporting views did not exclude the reversed original transaction.
+7. **Only the first product saved:** QuickSQLite's `transaction()` returns a Promise and schedules its callback, but synchronous repositories did not await it. `nextDeviceSeq()` therefore returned `0` before incrementing; the first product used an outbox key ending in `0`, and later products collided with that unique key and rolled back.
+8. **Successful voice responses looked empty:** the gateway returned HTTP 200 for the device recordings, but low-confidence or incomplete results were redirected to manual entry before Voice Sale visibly displayed the transcript.
 
 ## Implemented changes
 
@@ -33,6 +35,7 @@ Release: Android `1.1.2` (`versionCode 6`)
 - Expanded deterministic number handling for diacritics, common ASR spellings, 0–19 Yoruba words, tens, hundreds, thousands, millions, additive compounds, digits with commas, currency before/after amount, and Nigerian-English number words.
 - Product matching now considers saved voice aliases as well as product names.
 - Voice Sale accepts product-first shorthand without an explicit sale verb because listening starts only after a deliberate Voice Sale action. It uses conservative typo-tolerant matching for saved custom names (for example, spoken `Indomie` can match saved `Indomine carton`) but rejects a lone generic unit such as `carton`. Review remains mandatory and nothing is saved automatically.
+- Incomplete or low-confidence recognition now stays on a visible Voice Sale review screen showing the exact ASR transcript and which fields need correction. The trader can retry or open prefilled editable fields; a successful server response no longer appears to produce nothing.
 
 ### Inventory, unrestricted products, and camera recovery
 
@@ -41,6 +44,7 @@ Release: Android `1.1.2` (`versionCode 6`)
 - Added 21 common market-item suggestions in all four app languages, including Beans/Ẹ̀wà/Wake/Agwa and Indomie/noodles spelling variants. The app refreshes suggestions from `GET /api/v1/catalog`, caches them, and always has the same built-in catalog when the server/network is unavailable. Catalog entries never guess prices or stock.
 - Fixed Android camera handling by requesting runtime permission and surfacing denial/errors. Added a gallery picker and made it explicit that a photo is optional and does not identify the item.
 - Added New item and search directly to Restock, so an item can be created and immediately stocked.
+- Replaced unawaited QuickSQLite Promise transactions with explicit synchronous atomic transactions, matching the repository API. Sequence allocation and each product/outbox write now finish before the screen refreshes, so the second and later products no longer reuse the first product's outbox key. The same repair protects sales, expenses, restocks, customers, settings, and corrections.
 
 ### Settings, language, access, and history
 
@@ -63,27 +67,27 @@ Release: Android `1.1.2` (`versionCode 6`)
 ## Verification completed
 
 - `npm run typecheck` — passed.
-- `npm test -- --runInBand` — 3 suites, 23 tests passed, including custom `Indomine carton`, product-first `Indomie one carton five thousand naira`, generic-unit rejection, and explicit non-sale rejection.
+- `npm test -- --runInBand` — 4 suites, 25 tests passed, including synchronous commit/rollback behavior, custom `Indomine carton`, product-first `Indomie one carton five thousand naira`, generic-unit rejection, and explicit non-sale rejection.
 - `npm run lint` — 0 errors (legacy/style warnings remain).
 - `python3 scripts/check_schema_v3.py` — passed fresh v1→v2→v3 schema, grouped receipt totals, one-receipt sale count, partial debt, profit, and reversal exclusion.
 - Android `assembleRelease` and `bundleRelease` — passed on the deployment VPS.
-- APK identity — `com.akeledger`, version `1.1.2`, code `6`.
+- APK identity — `com.akeledger`, version `1.1.3`, code `7`.
 - APK signing verification — passed APK Signature Scheme v1 and v2.
 - Public HTTPS APK download — HTTP 200 and downloaded SHA-256 matched the release artifact.
 - Public catalog endpoint — HTTP 200; 21 suggestions, Beans and Indomie/noodles aliases present, custom products explicitly allowed.
 
 ## Release artifacts
 
-- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.2-v6.apk`
-- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.2-APK-QR.png`
-- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.2-v6.aab`
-- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.2.txt`
-- APK SHA-256: `2ef2ae48eee53cb9ae64628a1aaa50f492dc4fe592ee5ecd34a72d1291fd5ee7`
-- AAB SHA-256: `c231e7bd56bbcabb282642f538e50c261850cb6738ea9d802b6eaeb55a70fe40`
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-v7.apk`
+- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-APK-QR.png`
+- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-v7.aab`
+- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.3.txt`
+- APK SHA-256: `53bc680f21b9bf9777f51b55d9fe658cf2055e0c6f9c52a02f488168298d8e70`
+- AAB SHA-256: `cc05de8d5b86fad1022bf0394bf5206089147280cf91cf3f082a548ef05b9fde`
 
 ## Remaining validation and speech limitations
 
-- A physical-phone smoke test of this exact v6 build is still required, including upgrading over v5 with existing data, saying `Indomie one carton five thousand naira` for the saved custom `Indomine carton`, comparing the displayed transcript, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
+- A physical-phone smoke test of this exact v7 build is still required, including upgrading over v6 with existing data, adding at least two new products consecutively, saying `Indomie one carton five thousand naira` for the saved custom `Indomine carton`, comparing the displayed transcript, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
 - Genuine spoken-audio accuracy has not yet been measured. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
 - The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.

@@ -1,10 +1,10 @@
 # Ake Ledger 1.1 Physical-Phone Smoke Test
 
-Use a phone that already has v1.0.2 if possible. Do not clear app data.
+Use the existing physical-test phone. Install v1.1.3 over the current app; do not uninstall it or clear app data.
 
 ## 1. Upgrade and data preservation
 
-1. Install `AKE-Market-Ledger-1.1.0-v4.apk` over the existing app.
+1. Install `AKE-Market-Ledger-1.1.3-v7.apk` over the existing app.
 2. Open Ake Ledger.
 3. Confirm the existing owner, products, customers, stock, expenses, and totals remain present.
 4. If any existing data is missing, stop and do not record new production transactions.
@@ -12,12 +12,13 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 ## 2. Products, catalog, camera, and stock
 
 1. From Home, open **Items & stock**.
-2. Tap **New item**, choose **Beans / Ẹ̀wà**, enter opening stock, and save without a price or photo. Confirm it appears.
-3. Add a completely custom item that is not in the suggestions. Confirm it also appears.
-4. Turn on airplane mode, add another item, and confirm the screen says offline suggestions and still saves locally.
-5. Turn connectivity back on, refresh suggestions, and confirm online suggestions load.
-6. Add another item using **Take photo**; allow camera permission and confirm the preview. Also test **Choose photo**.
-7. Tap **Add stock**, search Beans, add quantity and cost, then verify the stock total.
+2. Tap **New item**, create `Test product two`, and save it without a price or photo. Confirm the form closes and it appears.
+3. Immediately tap **New item** again, create `Test product three`, and confirm this second consecutive product also appears. If either save does nothing, stop and report it.
+4. Add a completely custom item that is not in the suggestions. Confirm it also appears.
+5. Turn on airplane mode, add another item, and confirm the screen says offline suggestions and still saves locally.
+6. Turn connectivity back on, refresh suggestions, and confirm online suggestions load.
+7. Add another item using **Take photo**; allow camera permission and confirm the preview. Also test **Choose photo**.
+8. Tap **Add stock**, search a saved item, add quantity and cost, then verify the stock total.
 
 ## 3. Multi-item receipt
 
