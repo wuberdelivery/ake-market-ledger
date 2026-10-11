@@ -5,19 +5,12 @@
 // plus system TTS speak-back for the confirmation loop.
 // ============================================================
 
-import {
-  PermissionsAndroid,
-  Platform,
-} from 'react-native';
+import {PermissionsAndroid, Platform} from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import Tts from 'react-native-tts';
-import type { Language, Product } from '../models/types';
-import { parseSaleIntent, SaleIntent } from './yorubaIntentParser';
-import {
-  cancelActiveTranscription,
-  SttError,
-  transcribe,
-} from './sttProviders';
+import type {Language, Product} from '../models/types';
+import {parseSaleIntent, SaleIntent} from './yorubaIntentParser';
+import {cancelActiveTranscription, SttError, transcribe} from './sttProviders';
 
 const STT_TIMEOUT_MS = 120000; // CPU inference may cold-start the model.
 const recorder = new AudioRecorderPlayer();
@@ -35,7 +28,7 @@ export type VoiceResult =
       reason: 'no_network' | 'timeout' | 'stt_error';
       message: string;
     }
-  | { kind: 'EMPTY' };
+  | {kind: 'EMPTY'};
 
 let currentPath: string | null = null;
 
@@ -66,14 +59,11 @@ async function ensureMicrophonePermission(): Promise<void> {
 // ------------------------------------------------------------
 export async function startRecording(): Promise<void> {
   await ensureMicrophonePermission();
-  // AAC/m4a is small and is decoded in memory by the VPS gateway.
-  currentPath = await recorder.startRecorder(undefined, {
-    AudioEncoderAndroid: 3,        // AAC
-    AudioSourceAndroid: 6,         // VOICE_RECOGNITION (noise-tuned)
-    OutputFormatAndroid: 2,        // MPEG_4
-    AudioSamplingRateAndroid: 16000,
-    AudioEncodingBitRateAndroid: 32000,
-  } as any);
+  // Use the library's device-compatible defaults: Android MIC, AAC/MPEG-4,
+  // 48 kHz and 128 kbps. Some phones accept the VOICE_RECOGNITION/16 kHz
+  // configuration but write digital silence; the gateway safely resamples the
+  // standard microphone recording to 16 kHz for N-ATLaS.
+  currentPath = await recorder.startRecorder();
 }
 
 export async function stopRecordingAndProcess(
@@ -81,7 +71,7 @@ export async function stopRecordingAndProcess(
   products: Product[],
 ): Promise<VoiceResult> {
   if (!currentPath) {
-    return { kind: 'EMPTY' };
+    return {kind: 'EMPTY'};
   }
 
   let path: string;
@@ -89,38 +79,40 @@ export async function stopRecordingAndProcess(
     path = await recorder.stopRecorder();
   } catch {
     currentPath = null;
-    return { kind: 'EMPTY' };
+    return {kind: 'EMPTY'};
   }
   currentPath = null;
   if (!path) {
-    return { kind: 'EMPTY' };
+    return {kind: 'EMPTY'};
   }
 
   try {
-    const { transcript, model } = await transcribe({
+    const {transcript, model} = await transcribe({
       audioPath: path,
       language,
       timeoutMs: STT_TIMEOUT_MS,
     });
     if (!transcript.trim()) {
-      return { kind: 'EMPTY' };
+      return {kind: 'EMPTY'};
     }
 
     // Intent parsing remains local: fast, deterministic and auditable.
     const intent = parseSaleIntent(transcript, products);
-    return { kind: 'INTENT', intent, transcript, model, online: true };
+    return {kind: 'INTENT', intent, transcript, model, online: true};
   } catch (error: any) {
     const sttError = error instanceof SttError ? error : null;
-    const reason = sttError?.status === 408
-      ? 'timeout'
-      : sttError?.status === null
+    const reason =
+      sttError?.status === 408
+        ? 'timeout'
+        : sttError?.status === null
         ? 'no_network'
         : 'stt_error';
     return {
       kind: 'OFFLINE_FALLBACK',
       reason,
-      message: sttError?.message
-        ?? 'N-ATLaS could not process the recording. Please retry.',
+      message:
+        sttError?.message ??
+        'N-ATLaS could not process the recording. Please retry.',
     };
   }
 }
@@ -142,7 +134,10 @@ export async function cancelRecording(): Promise<void> {
 // TTS speak-back
 // ------------------------------------------------------------
 const TTS_LOCALE: Record<Language, string> = {
-  yo: 'yo-NG', ha: 'ha-NG', ig: 'ig-NG', en: 'en-NG',
+  yo: 'yo-NG',
+  ha: 'ha-NG',
+  ig: 'ig-NG',
+  en: 'en-NG',
 };
 
 export async function speak(text: string, language: Language): Promise<void> {
@@ -159,12 +154,18 @@ export function buildConfirmationSpeech(
   language: Language,
   totalKobo: number,
 ): string {
-  const naira = (k: number) => `${Math.round(k / 100).toLocaleString('en-NG')} naira`;
+  const naira = (k: number) =>
+    `${Math.round(k / 100).toLocaleString('en-NG')} naira`;
   if (language === 'yo') {
     const qty = intent.quantity ?? 1;
-    const status = intent.paymentStatus === 'DEBT' ? 'Onígbèsè ni.' : 'Ó san tán.';
-    return `${intent.productName}, ${qty}. ${naira(totalKobo)}. ${status} Ṣé kí n fi sí àkọsílẹ̀?`;
+    const status =
+      intent.paymentStatus === 'DEBT' ? 'Onígbèsè ni.' : 'Ó san tán.';
+    return `${intent.productName}, ${qty}. ${naira(
+      totalKobo,
+    )}. ${status} Ṣé kí n fi sí àkọsílẹ̀?`;
   }
   const status = intent.paymentStatus === 'DEBT' ? 'On credit.' : 'Fully paid.';
-  return `${intent.productName}, ${intent.quantity ?? 1}. ${naira(totalKobo)}. ${status} Should I record it?`;
+  return `${intent.productName}, ${intent.quantity ?? 1}. ${naira(
+    totalKobo,
+  )}. ${status} Should I record it?`;
 }

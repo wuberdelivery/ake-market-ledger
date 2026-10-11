@@ -1,10 +1,10 @@
 # Ake Ledger 1.1 Physical-Phone Smoke Test
 
-Use the existing physical-test phone. Install v1.1.3 over the current app; do not uninstall it or clear app data.
+Use the existing physical-test phone. Install v1.1.4 over the current app; do not uninstall it or clear app data.
 
 ## 1. Upgrade and data preservation
 
-1. Install `AKE-Market-Ledger-1.1.3-v7.apk` over the existing app.
+1. Install `AKE-Market-Ledger-1.1.4-v8.apk` over the existing app.
 2. Open Ake Ledger.
 3. Confirm the existing owner, products, customers, stock, expenses, and totals remain present.
 4. If any existing data is missing, stop and do not record new production transactions.

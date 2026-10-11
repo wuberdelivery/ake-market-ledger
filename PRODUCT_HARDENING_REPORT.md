@@ -1,7 +1,7 @@
 # Ake Ledger 1.1 Product Hardening Report
 
 Date: 11 October 2026
-Release: Android `1.1.3` (`versionCode 7`)
+Release: Android `1.1.4` (`versionCode 8`)
 
 ## Root causes reproduced
 
@@ -13,6 +13,7 @@ Release: Android `1.1.3` (`versionCode 7`)
 6. **Corrections did not fully leave reports:** reversals were appended, but reporting views did not exclude the reversed original transaction.
 7. **Only the first product saved:** QuickSQLite's `transaction()` returns a Promise and schedules its callback, but synchronous repositories did not await it. `nextDeviceSeq()` therefore returned `0` before incrementing; the first product used an outbox key ending in `0`, and later products collided with that unique key and rolled back.
 8. **Successful voice responses looked empty:** the gateway returned HTTP 200 for the device recordings, but low-confidence or incomplete results were redirected to manual entry before Voice Sale visibly displayed the transcript.
+9. **The physical phone recorded digital silence:** gateway diagnostics on four genuine 3–7 second recordings measured both RMS and peak amplitude as exactly zero. The device accepted Android `VOICE_RECOGNITION` at 16 kHz but wrote silent AAC; the former English inference path then hallucinated unrelated text from that silence.
 
 ## Implemented changes
 
@@ -36,6 +37,7 @@ Release: Android `1.1.3` (`versionCode 7`)
 - Product matching now considers saved voice aliases as well as product names.
 - Voice Sale accepts product-first shorthand without an explicit sale verb because listening starts only after a deliberate Voice Sale action. It uses conservative typo-tolerant matching for saved custom names (for example, spoken `Indomie` can match saved `Indomine carton`) but rejects a lone generic unit such as `carton`. Review remains mandatory and nothing is saved automatically.
 - Incomplete or low-confidence recognition now stays on a visible Voice Sale review screen showing the exact ASR transcript and which fields need correction. The trader can retry or open prefilled editable fields; a successful server response no longer appears to produce nothing.
+- Android recording now uses the library's standard `MIC`/AAC/MPEG-4 device defaults rather than forcing `VOICE_RECOGNITION` at 16 kHz. The gateway resamples to 16 kHz, rejects silent/very quiet recordings, applies voice-activity filtering, and runs Nigerian English through the official model's INT8 runtime.
 
 ### Inventory, unrestricted products, and camera recovery
 
@@ -71,23 +73,23 @@ Release: Android `1.1.3` (`versionCode 7`)
 - `npm run lint` — 0 errors (legacy/style warnings remain).
 - `python3 scripts/check_schema_v3.py` — passed fresh v1→v2→v3 schema, grouped receipt totals, one-receipt sale count, partial debt, profit, and reversal exclusion.
 - Android `assembleRelease` and `bundleRelease` — passed on the deployment VPS.
-- APK identity — `com.akeledger`, version `1.1.3`, code `7`.
+- APK identity — `com.akeledger`, version `1.1.4`, code `8`.
 - APK signing verification — passed APK Signature Scheme v1 and v2.
 - Public HTTPS APK download — HTTP 200 and downloaded SHA-256 matched the release artifact.
 - Public catalog endpoint — HTTP 200; 21 suggestions, Beans and Indomie/noodles aliases present, custom products explicitly allowed.
 
 ## Release artifacts
 
-- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-v7.apk`
-- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-APK-QR.png`
-- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-v7.aab`
-- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.3.txt`
-- APK SHA-256: `53bc680f21b9bf9777f51b55d9fe658cf2055e0c6f9c52a02f488168298d8e70`
-- AAB SHA-256: `cc05de8d5b86fad1022bf0394bf5206089147280cf91cf3f082a548ef05b9fde`
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.4-v8.apk`
+- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.4-APK-QR.png`
+- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.4-v8.aab`
+- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.4.txt`
+- APK SHA-256: `c1abb6050f3e16ff4c4067f35867e7b29a79c8883d3c1f05fd5164b586a148d3`
+- AAB SHA-256: `5f65b79a5fd62daa81aebf59217b5e709f1d918fd5dc1d1a4bf0510cf2c31949`
 
 ## Remaining validation and speech limitations
 
-- A physical-phone smoke test of this exact v7 build is still required, including upgrading over v6 with existing data, adding at least two new products consecutively, saying `Indomie one carton five thousand naira` for the saved custom `Indomine carton`, comparing the displayed transcript, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
+- A physical-phone smoke test of this exact v8 build is still required, including upgrading over v7 with existing data, adding at least two new products consecutively, confirming the server receives non-silent audio, saying `Indomie one carton five thousand naira` for the saved custom `Indomine carton`, comparing the displayed transcript, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
 - Genuine spoken-audio accuracy has not yet been measured. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
 - The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.

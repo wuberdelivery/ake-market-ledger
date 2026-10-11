@@ -6,7 +6,7 @@
 
 AKE Market Ledger is a React Native Android/iOS application for recording multi-item sales, expenses, stock and customer debt. Core bookkeeping uses an on-device SQLite database and remains available offline. Voice sales require connectivity to the project's secure ASR gateway; if voice processing fails, the trader can retry or continue with editable manual entry without losing access to the ledger.
 
-Version 1.1 adds a visible Items & stock area, unrestricted custom products, online/offline market suggestions, corrected camera/gallery handling, atomic grouped receipts, an editable cart and recoverable per-user drafts, searchable transaction history with immutable correction, reversal-aware reports, visible voice activation, persistent language Settings, and explicit user switching/logout. Version 1.1.3 accepts product-first Voice Sale shorthand and typo-tolerant matching against saved custom product names, visibly shows incomplete voice transcripts before correction, and fixes synchronous SQLite write sequencing so any number of products can be added. Schema migration v3 preserves existing rows; it only adds receipt metadata and nullable links.
+Version 1.1 adds a visible Items & stock area, unrestricted custom products, online/offline market suggestions, corrected camera/gallery handling, atomic grouped receipts, an editable cart and recoverable per-user drafts, searchable transaction history with immutable correction, reversal-aware reports, visible voice activation, persistent language Settings, and explicit user switching/logout. Version 1.1.4 accepts product-first Voice Sale shorthand and typo-tolerant matching against saved custom product names, visibly shows incomplete voice transcripts before correction, fixes synchronous SQLite write sequencing so any number of products can be added, and uses the standard Android microphone configuration after device diagnostics proved the prior voice-recognition source recorded digital silence. Schema migration v3 preserves existing rows; it only adds receipt metadata and nullable links.
 
 Configured official voice-model mappings:
 
@@ -82,9 +82,9 @@ Release signing values are read from the operator's private Gradle properties an
 
 Current signed Android release:
 
-- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-v7.apk`
-- QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.3-APK-QR.png`
-- SHA-256: `53bc680f21b9bf9777f51b55d9fe658cf2055e0c6f9c52a02f488168298d8e70`
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.4-v8.apk`
+- QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.4-APK-QR.png`
+- SHA-256: `c1abb6050f3e16ff4c4067f35867e7b29a79c8883d3c1f05fd5164b586a148d3`
 
 See `PRODUCT_HARDENING_REPORT.md` and `DEVICE_SMOKE_TEST_V1.1.md` for implementation decisions, verified checks, and the remaining physical-phone gate.
 
