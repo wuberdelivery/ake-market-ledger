@@ -140,7 +140,7 @@ export default function SettingsScreen({
             {t(language, 'settings.logout')}
           </Text>
         </Pressable>
-        <Text style={styles.version}>Ake Ledger · 1.1.0</Text>
+        <Text style={styles.version}>Ake Ledger · 1.1.1</Text>
       </ScrollView>
     </View>
   );

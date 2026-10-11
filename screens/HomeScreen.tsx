@@ -15,6 +15,7 @@ interface Props {
   onMoneyInVoice: () => void;
   onMoneyOut: () => void;
   onLedger: () => void;
+  onInventory: () => void;
   onSettings: () => void;
 }
 
@@ -33,6 +34,7 @@ export default function HomeScreen({
   onMoneyInVoice,
   onMoneyOut,
   onLedger,
+  onInventory,
   onSettings,
 }: Props) {
   const isHelper = role === 'HELPER';
@@ -94,6 +96,21 @@ export default function HomeScreen({
           </Pressable>
         )}
       </View>
+
+      {!isHelper ? (
+        <Pressable style={styles.inventoryButton} onPress={onInventory}>
+          <Text style={styles.inventoryIcon}>📦</Text>
+          <View style={styles.inventoryCopy}>
+            <Text style={styles.inventoryTitle}>
+              {t(language, 'inventory.title')}
+            </Text>
+            <Text style={styles.inventoryNote}>
+              {t(language, 'inventory.home_note')}
+            </Text>
+          </View>
+          <Text style={styles.inventoryArrow}>›</Text>
+        </Pressable>
+      ) : null}
 
       <View style={styles.saleRow}>
         <Pressable
@@ -200,7 +217,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   lowStockText: {fontSize: 14, fontWeight: '700', color: colors.warning},
-  saleRow: {flex: 1.25, flexDirection: 'row', gap: spacing.sm, minHeight: 150},
+  inventoryButton: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  inventoryIcon: {fontSize: 27, marginRight: spacing.md},
+  inventoryCopy: {flex: 1},
+  inventoryTitle: {fontSize: 17, fontWeight: '900', color: colors.ink},
+  inventoryNote: {fontSize: 11, color: colors.inkSoft, marginTop: 1},
+  inventoryArrow: {fontSize: 30, color: colors.inkSoft},
+  saleRow: {flex: 1.25, flexDirection: 'row', gap: spacing.sm, minHeight: 136},
   saleDoor: {
     flex: 1.55,
     borderRadius: radius.lg,

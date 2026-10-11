@@ -9,7 +9,17 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 3. Confirm the existing owner, products, customers, stock, expenses, and totals remain present.
 4. If any existing data is missing, stop and do not record new production transactions.
 
-## 2. Multi-item receipt
+## 2. Products, catalog, camera, and stock
+
+1. From Home, open **Items & stock**.
+2. Tap **New item**, choose **Beans / Ẹ̀wà**, enter opening stock, and save without a price or photo. Confirm it appears.
+3. Add a completely custom item that is not in the suggestions. Confirm it also appears.
+4. Turn on airplane mode, add another item, and confirm the screen says offline suggestions and still saves locally.
+5. Turn connectivity back on, refresh suggestions, and confirm online suggestions load.
+6. Add another item using **Take photo**; allow camera permission and confirm the preview. Also test **Choose photo**.
+7. Tap **Add stock**, search Beans, add quantity and cost, then verify the stock total.
+
+## 3. Multi-item receipt
 
 1. Tap **Money In**.
 2. Add product A, set quantity 2, and change its unit price.
@@ -19,14 +29,14 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 6. Enter a partial payment, select a customer, and save.
 7. Confirm Home profit/stock and Ledger debt changed exactly once.
 
-## 3. Draft recovery
+## 4. Draft recovery
 
 1. Start another two-item sale.
 2. Exit with **Keep & exit**.
 3. Reopen Money In and confirm both lines, prices, quantities, and payment are restored.
 4. Discard the draft and confirm it does not return.
 
-## 4. Voice review (genuine Yoruba speech)
+## 5. Voice review (genuine Yoruba speech)
 
 1. Tap the visible **Voice sale** button.
 2. Hold the microphone and speak one genuine sale; release when finished.
@@ -36,7 +46,7 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 6. Test airplane mode or service failure and confirm Retry and manual entry remain available.
 7. Start processing once more, tap cancel, and confirm the app returns without saving.
 
-## 5. Settings and users
+## 6. Settings and users
 
 1. Open the visible gear.
 2. Change language to each of English, Yoruba, Hausa, and Igbo; confirm Home and the sale flow update without changing data.
@@ -44,7 +54,7 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 4. Confirm the helper cannot see profit, expense, debt, or history.
 5. Use **Log out and lock app**, then sign back in.
 
-## 6. History and correction
+## 7. History and correction
 
 1. Open Ledger → Transaction history.
 2. Search by product/customer and try Today/7 days/category filters.

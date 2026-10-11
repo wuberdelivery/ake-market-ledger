@@ -5,13 +5,21 @@
 // profit since cost-of-goods is charged per sale).
 // ============================================================
 
-import React, { useState } from 'react';
-import { View, Text, Pressable, Image, FlatList, StyleSheet } from 'react-native';
-import { colors, spacing, radius, touch } from '../ui/theme';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Image,
+  FlatList,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import {colors, spacing, radius, touch} from '../ui/theme';
 import NumberPad from '../ui/NumberPad';
-import { t } from '../i18n/labels';
-import type { Language, Product } from '../models/types';
-import { restockProduct } from '../db/setupRepository';
+import {t} from '../i18n/labels';
+import type {Language, Product} from '../models/types';
+import {restockProduct} from '../db/setupRepository';
 
 interface Props {
   language: Language;
@@ -19,17 +27,31 @@ interface Props {
   products: Product[];
   onFinished: () => void;
   onCancel: () => void;
+  onAddProduct: () => void;
 }
 
 type Step = 'PICK' | 'QTY' | 'COST';
 
-export default function RestockScreen({ language: lang, userId, products, onFinished, onCancel }: Props) {
+export default function RestockScreen({
+  language: lang,
+  userId,
+  products,
+  onFinished,
+  onCancel,
+  onAddProduct,
+}: Props) {
   const [step, setStep] = useState<Step>('PICK');
   const [product, setProduct] = useState<Product | null>(null);
   const [qtyStr, setQtyStr] = useState('');
   const [costStr, setCostStr] = useState('');
+  const [search, setSearch] = useState('');
 
-  const counted = products.filter(p => p.stockMode === 'COUNTED');
+  const counted = products.filter(
+    p =>
+      p.stockMode === 'COUNTED' &&
+      (!search.trim() ||
+        p.name.toLowerCase().includes(search.trim().toLowerCase())),
+  );
 
   const save = () => {
     if (!product) return;
@@ -44,20 +66,54 @@ export default function RestockScreen({ language: lang, userId, products, onFini
     return (
       <View style={styles.screen}>
         <Header title={t(lang, 'restock.title')} onBack={onCancel} />
+        <View style={styles.pickActions}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t(lang, 'inventory.search')}
+            placeholderTextColor={colors.inkSoft}
+            style={styles.search}
+          />
+          <Pressable style={styles.newButton} onPress={onAddProduct}>
+            <Text style={styles.newButtonText}>
+              + {t(lang, 'inventory.new_item')}
+            </Text>
+          </Pressable>
+        </View>
         <FlatList
           data={counted}
           numColumns={3}
           keyExtractor={p => p.id}
-          contentContainerStyle={{ padding: spacing.sm }}
-          renderItem={({ item }) => (
-            <Pressable style={styles.tile} onPress={() => { setProduct(item); setQtyStr(''); setStep('QTY'); }}>
+          contentContainerStyle={{padding: spacing.sm}}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>📦</Text>
+              <Text style={styles.emptyText}>
+                {t(lang, 'inventory.empty_note')}
+              </Text>
+            </View>
+          }
+          renderItem={({item}) => (
+            <Pressable
+              style={styles.tile}
+              onPress={() => {
+                setProduct(item);
+                setQtyStr('');
+                setStep('QTY');
+              }}>
               {item.photoPath ? (
-                <Image source={{ uri: item.photoPath }} style={styles.tileImg} />
+                <Image source={{uri: item.photoPath}} style={styles.tileImg} />
               ) : (
-                <View style={[styles.tileImg, styles.tileNoImg]}><Text style={{ fontSize: 34 }}>📦</Text></View>
+                <View style={[styles.tileImg, styles.tileNoImg]}>
+                  <Text style={{fontSize: 34}}>📦</Text>
+                </View>
               )}
-              <Text style={styles.tileName} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.tileStock}>{item.stockQuantity} {item.baseUnit}</Text>
+              <Text style={styles.tileName} numberOfLines={2}>
+                {item.name}
+              </Text>
+              <Text style={styles.tileStock}>
+                {item.stockQuantity} {item.baseUnit}
+              </Text>
             </Pressable>
           )}
         />
@@ -70,7 +126,9 @@ export default function RestockScreen({ language: lang, userId, products, onFini
       <View style={styles.screen}>
         <Header title={product.name} onBack={() => setStep('PICK')} />
         <View style={styles.amountBox}>
-          <Text style={styles.label}>{t(lang, 'restock.title')} ({product.baseUnit})</Text>
+          <Text style={styles.label}>
+            {t(lang, 'restock.title')} ({product.baseUnit})
+          </Text>
           <Text style={styles.amountText}>{qtyStr || '0'}</Text>
         </View>
         <NumberPad
@@ -78,7 +136,10 @@ export default function RestockScreen({ language: lang, userId, products, onFini
           onBackspace={() => setQtyStr(s => s.slice(0, -1))}
           doneLabel="→"
           doneEnabled={parseFloat(qtyStr || '0') > 0}
-          onDone={() => { setCostStr(''); setStep('COST'); }}
+          onDone={() => {
+            setCostStr('');
+            setStep('COST');
+          }}
         />
       </View>
     );
@@ -89,8 +150,12 @@ export default function RestockScreen({ language: lang, userId, products, onFini
       <View style={styles.screen}>
         <Header title={product.name} onBack={() => setStep('QTY')} />
         <View style={styles.amountBox}>
-          <Text style={styles.label}>{lang === 'yo' ? 'Iye tí ẹ fi rà á' : 'Total cost'}</Text>
-          <Text style={styles.amountText}>₦{(parseInt(costStr || '0', 10)).toLocaleString('en-NG')}</Text>
+          <Text style={styles.label}>
+            {lang === 'yo' ? 'Iye tí ẹ fi rà á' : 'Total cost'}
+          </Text>
+          <Text style={styles.amountText}>
+            ₦{parseInt(costStr || '0', 10).toLocaleString('en-NG')}
+          </Text>
         </View>
         <NumberPad
           onKey={d => setCostStr(s => (s + d).slice(0, 9))}
@@ -104,27 +169,83 @@ export default function RestockScreen({ language: lang, userId, products, onFini
   return null;
 }
 
-function Header({ title, onBack }: { title: string; onBack: () => void }) {
+function Header({title, onBack}: {title: string; onBack: () => void}) {
   return (
-    <View style={[styles.header, { backgroundColor: colors.moneyOut }]}>
-      <Pressable style={styles.backBtn} onPress={onBack}><Text style={styles.backText}>←</Text></Pressable>
-      <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+    <View style={[styles.header, {backgroundColor: colors.moneyOut}]}>
+      <Pressable style={styles.backBtn} onPress={onBack}>
+        <Text style={styles.backText}>←</Text>
+      </Pressable>
+      <Text style={styles.headerTitle} numberOfLines={1}>
+        {title}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-  backBtn: { width: touch.min, height: touch.min - 16, alignItems: 'center', justifyContent: 'center' },
-  backText: { color: colors.white, fontSize: 30, fontWeight: '800' },
-  headerTitle: { color: colors.white, fontSize: 24, fontWeight: '800', flex: 1 },
-  tile: { flex: 1 / 3, margin: 6, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 8, alignItems: 'center' },
-  tileImg: { width: 80, height: 80, borderRadius: radius.sm },
-  tileNoImg: { backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
-  tileName: { fontSize: 15, fontWeight: '700', color: colors.ink, marginTop: 6 },
-  tileStock: { fontSize: 13, color: colors.inkSoft },
-  amountBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 18, color: colors.inkSoft, marginBottom: spacing.sm },
-  amountText: { fontSize: 52, fontWeight: '800', color: colors.moneyOut },
+  screen: {flex: 1, backgroundColor: colors.bg},
+  pickActions: {flexDirection: 'row', gap: spacing.sm, padding: spacing.sm},
+  search: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    fontSize: 16,
+    paddingHorizontal: spacing.md,
+  },
+  newButton: {
+    minHeight: 54,
+    borderRadius: radius.md,
+    backgroundColor: colors.moneyIn,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  newButtonText: {color: colors.white, fontSize: 14, fontWeight: '800'},
+  empty: {alignItems: 'center', padding: spacing.xl},
+  emptyIcon: {fontSize: 42},
+  emptyText: {
+    fontSize: 15,
+    color: colors.inkSoft,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  backBtn: {
+    width: touch.min,
+    height: touch.min - 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backText: {color: colors.white, fontSize: 30, fontWeight: '800'},
+  headerTitle: {color: colors.white, fontSize: 24, fontWeight: '800', flex: 1},
+  tile: {
+    flex: 1 / 3,
+    margin: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 8,
+    alignItems: 'center',
+  },
+  tileImg: {width: 80, height: 80, borderRadius: radius.sm},
+  tileNoImg: {
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileName: {fontSize: 15, fontWeight: '700', color: colors.ink, marginTop: 6},
+  tileStock: {fontSize: 13, color: colors.inkSoft},
+  amountBox: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  label: {fontSize: 18, color: colors.inkSoft, marginBottom: spacing.sm},
+  amountText: {fontSize: 52, fontWeight: '800', color: colors.moneyOut},
 });

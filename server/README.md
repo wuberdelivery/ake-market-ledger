@@ -21,7 +21,8 @@ It does **not** send audio to the separate `NCAIR1/N-ATLaS` 8B text LLM. Audio i
 
 ## API
 
-`POST /api/v1/transcribe?language=yo` as `multipart/form-data` with an `audio` file. Supported language codes are `yo`, `ha`, `ig`, and `en`.
+- `POST /api/v1/transcribe?language=yo` as `multipart/form-data` with an `audio` file. Supported language codes are `yo`, `ha`, `ig`, and `en`.
+- `GET /api/v1/catalog` returns optional multilingual market-item suggestions. It contains no prices or stock and never restricts custom products; the mobile app has an embedded fallback copy for offline use.
 
 The response identifies the exact official model used, for example:
 

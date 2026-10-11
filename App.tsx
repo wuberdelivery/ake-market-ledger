@@ -27,6 +27,7 @@ import type {PeriodData} from './screens/SummaryScreen';
 import HelperLoginScreen from './screens/HelperLoginScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import InventoryScreen from './screens/InventoryScreen';
 import {colors} from './ui/theme';
 import type {
   Customer,
@@ -44,6 +45,7 @@ type Screen =
   | 'EXPENSE'
   | 'LEDGER'
   | 'HISTORY'
+  | 'INVENTORY'
   | 'SETTINGS'
   | 'ADD_PRODUCT'
   | 'ADD_CUSTOMER'
@@ -61,6 +63,12 @@ export default function App() {
   const [role, setRole] = useState<'OWNER' | 'HELPER'>('OWNER');
   const [loginCanCancel, setLoginCanCancel] = useState(false);
   const [salePrefill, setSalePrefill] = useState<SaleIntent | null>(null);
+  const [setupReturn, setSetupReturn] = useState<
+    'SALE' | 'INVENTORY' | 'RESTOCK'
+  >('SALE');
+  const [restockReturn, setRestockReturn] = useState<'HOME' | 'INVENTORY'>(
+    'HOME',
+  );
   const [shareData, setShareData] = useState<PeriodData | null>(null);
   const [shopName, setShopName] = useState('');
   const [lowStock, setLowStock] = useState<{id: string; name: string}[]>([]);
@@ -227,7 +235,24 @@ export default function App() {
           onMoneyInVoice={() => setScreen('VOICE_SALE')}
           onMoneyOut={() => role === 'OWNER' && setScreen('EXPENSE')}
           onLedger={() => role === 'OWNER' && setScreen('LEDGER')}
+          onInventory={() => role === 'OWNER' && setScreen('INVENTORY')}
           onSettings={() => setScreen('SETTINGS')}
+        />
+      ) : null}
+
+      {screen === 'INVENTORY' ? (
+        <InventoryScreen
+          language={language}
+          products={products}
+          onAddProduct={() => {
+            setSetupReturn('INVENTORY');
+            setScreen('ADD_PRODUCT');
+          }}
+          onRestock={() => {
+            setRestockReturn('INVENTORY');
+            setScreen('RESTOCK');
+          }}
+          onBack={goHome}
         />
       ) : null}
 
@@ -277,6 +302,7 @@ export default function App() {
           initialIntent={salePrefill}
           onAddProduct={() => {
             setSalePrefill(null);
+            setSetupReturn('SALE');
             setScreen('ADD_PRODUCT');
           }}
           onAddCustomer={() => {
@@ -299,9 +325,9 @@ export default function App() {
           language={language}
           onSaved={() => {
             refresh();
-            setScreen('SALE');
+            setScreen(setupReturn);
           }}
-          onCancel={() => setScreen('SALE')}
+          onCancel={() => setScreen(setupReturn)}
         />
       ) : null}
 
@@ -322,7 +348,10 @@ export default function App() {
           userId={userId}
           onFinished={goHome}
           onCancel={goHome}
-          onRestock={() => setScreen('RESTOCK')}
+          onRestock={() => {
+            setRestockReturn('HOME');
+            setScreen('RESTOCK');
+          }}
         />
       ) : null}
 
@@ -340,8 +369,15 @@ export default function App() {
           language={language}
           userId={userId}
           products={products}
-          onFinished={goHome}
-          onCancel={goHome}
+          onFinished={() => {
+            refresh();
+            setScreen(restockReturn);
+          }}
+          onCancel={() => setScreen(restockReturn)}
+          onAddProduct={() => {
+            setSetupReturn('RESTOCK');
+            setScreen('ADD_PRODUCT');
+          }}
         />
       ) : null}
 

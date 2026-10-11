@@ -1,7 +1,7 @@
 # Ake Ledger 1.1 Product Hardening Report
 
-Date: 10 October 2026  
-Release: Android `1.1.0` (`versionCode 4`)
+Date: 11 October 2026
+Release: Android `1.1.1` (`versionCode 5`)
 
 ## Root causes reproduced
 
@@ -33,6 +33,14 @@ Release: Android `1.1.0` (`versionCode 4`)
 - Expanded deterministic number handling for diacritics, common ASR spellings, 0–19 Yoruba words, tens, hundreds, thousands, millions, additive compounds, digits with commas, currency before/after amount, and Nigerian-English number words.
 - Product matching now considers saved voice aliases as well as product names.
 
+### Inventory, unrestricted products, and camera recovery
+
+- Added a visible **Items & stock** screen on Home with search, current quantities, New item, and Restock actions. Product creation is no longer buried inside a sale.
+- Counted products now require only a name. Opening stock, cost, selling price, and photo are optional; a missing selling price can be entered on the sale line. Custom names are always accepted.
+- Added 20 common market-item suggestions in all four app languages, including Beans/Ẹ̀wà/Wake/Agwa. The app refreshes suggestions from `GET /api/v1/catalog`, caches them, and always has the same built-in catalog when the server/network is unavailable. Catalog entries never guess prices or stock.
+- Fixed Android camera handling by requesting runtime permission and surfacing denial/errors. Added a gallery picker and made it explicit that a photo is optional and does not identify the item.
+- Added New item and search directly to Restock, so an item can be created and immediately stocked.
+
 ### Settings, language, access, and history
 
 - Added an always-visible Settings button with post-onboarding English, Yoruba, Hausa, and Igbo selection. The choice persists and does not modify ledger data.
@@ -58,22 +66,23 @@ Release: Android `1.1.0` (`versionCode 4`)
 - `npm run lint` — 0 errors (legacy/style warnings remain).
 - `python3 scripts/check_schema_v3.py` — passed fresh v1→v2→v3 schema, grouped receipt totals, one-receipt sale count, partial debt, profit, and reversal exclusion.
 - Android `assembleRelease` and `bundleRelease` — passed on the deployment VPS.
-- APK identity — `com.akeledger`, version `1.1.0`, code `4`.
+- APK identity — `com.akeledger`, version `1.1.1`, code `5`.
 - APK signing verification — passed APK Signature Scheme v1 and v2.
 - Public HTTPS APK download — HTTP 200 and downloaded SHA-256 matched the release artifact.
+- Public catalog endpoint — HTTP 200; 20 suggestions, Beans present, custom products explicitly allowed.
 
 ## Release artifacts
 
-- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.0-v4.apk`
-- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.0-APK-QR.png`
-- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.0-v4.aab`
-- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.0.txt`
-- APK SHA-256: `89822e2194b3ac0cf42baf1be4176a0a02da682300700df40ebf0de8486023c3`
-- AAB SHA-256: `e1a4e65cc8560a7994ce65bc4b6a02eaf8847a5dd6e898ea86701a2b9efab8cd`
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.1-v5.apk`
+- APK QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.1-APK-QR.png`
+- AAB: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.1-v5.aab`
+- Checksums: `https://wuber.com.ng/storage/ake-ledger/SHA256SUMS-1.1.1.txt`
+- APK SHA-256: `ce4c405266bc4903b37fb125e53e3f2a9da54f9e3172047bb01d13a9ff5621ba`
+- AAB SHA-256: `25bddd0c9d58706e988f57e1fc097a52f442f5875bba139184c341eedea48ec0`
 
 ## Remaining validation and speech limitations
 
-- A physical-phone smoke test of this exact v4 build is still required, including upgrading over v3 with existing data, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
+- A physical-phone smoke test of this exact v5 build is still required, including upgrading over v3 with existing data, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba.
 - Genuine spoken-audio accuracy has not yet been measured. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
 - The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.

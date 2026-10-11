@@ -26,8 +26,34 @@ from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 SERVER_DIR = Path(__file__).resolve().parent
+
+# Small language-neutral market catalog used to make product creation quick.
+# It is suggestion data only: traders may always enter any custom item, and
+# prices/stock are never guessed or overwritten by this endpoint.
+MARKET_CATALOG: list[dict[str, Any]] = [
+    {"id": "beans", "names": {"en": "Beans", "yo": "Ẹ̀wà", "ha": "Wake", "ig": "Agwa"}, "aliases": ["beans", "bean", "ewa", "ẹ̀wà", "wake", "agwa"], "defaultUnit": "bag"},
+    {"id": "rice", "names": {"en": "Rice", "yo": "Ìrẹsì", "ha": "Shinkafa", "ig": "Osikapa"}, "aliases": ["rice", "iresi", "ìrẹsì", "shinkafa", "osikapa", "apo iresi"], "defaultUnit": "bag"},
+    {"id": "garri", "names": {"en": "Garri", "yo": "Gàrí", "ha": "Gari", "ig": "Garri"}, "aliases": ["garri", "gari", "gàrí"], "defaultUnit": "bag"},
+    {"id": "yam", "names": {"en": "Yam", "yo": "Iṣu", "ha": "Doya", "ig": "Ji"}, "aliases": ["yam", "isu", "iṣu", "doya", "ji"], "defaultUnit": "tuber"},
+    {"id": "maize", "names": {"en": "Maize", "yo": "Àgbàdo", "ha": "Masara", "ig": "Ọka"}, "aliases": ["maize", "corn", "agbado", "àgbàdo", "masara", "oka", "ọka"], "defaultUnit": "bag"},
+    {"id": "cassava", "names": {"en": "Cassava", "yo": "Ẹ̀gẹ́", "ha": "Rogo", "ig": "Akpụ"}, "aliases": ["cassava", "ege", "ẹ̀gẹ́", "rogo", "akpu", "akpụ"], "defaultUnit": "bag"},
+    {"id": "palm-oil", "names": {"en": "Palm oil", "yo": "Epo pupa", "ha": "Manja", "ig": "Mmanụ nkwụ"}, "aliases": ["palm oil", "epo pupa", "manja", "mmanu nkwu"], "defaultUnit": "litre"},
+    {"id": "groundnut-oil", "names": {"en": "Groundnut oil", "yo": "Epo ilẹ̀", "ha": "Man gyada", "ig": "Mmanụ ahụekere"}, "aliases": ["groundnut oil", "vegetable oil", "epo ile", "man gyada"], "defaultUnit": "litre"},
+    {"id": "tomato", "names": {"en": "Tomatoes", "yo": "Tòmátì", "ha": "Tumatir", "ig": "Tomato"}, "aliases": ["tomato", "tomatoes", "tomati", "tumatir"], "defaultUnit": "basket"},
+    {"id": "pepper", "names": {"en": "Pepper", "yo": "Ata", "ha": "Barkono", "ig": "Ose"}, "aliases": ["pepper", "ata", "barkono", "ose"], "defaultUnit": "basket"},
+    {"id": "onion", "names": {"en": "Onions", "yo": "Àlùbọ́sà", "ha": "Albasa", "ig": "Yabasị"}, "aliases": ["onion", "onions", "alubosa", "àlùbọ́sà", "albasa", "yabasi"], "defaultUnit": "bag"},
+    {"id": "plantain", "names": {"en": "Plantain", "yo": "Ọ̀gẹ̀dẹ̀", "ha": "Ayaba", "ig": "Unere"}, "aliases": ["plantain", "ogede", "ọ̀gẹ̀dẹ̀", "ayaba", "unere"], "defaultUnit": "bunch"},
+    {"id": "egg", "names": {"en": "Eggs", "yo": "Ẹyin", "ha": "Kwai", "ig": "Akwa"}, "aliases": ["egg", "eggs", "eyin", "ẹyin", "kwai", "akwa"], "defaultUnit": "crate"},
+    {"id": "fish", "names": {"en": "Fish", "yo": "Ẹja", "ha": "Kifi", "ig": "Azụ"}, "aliases": ["fish", "eja", "ẹja", "kifi", "azu", "azụ"], "defaultUnit": "carton"},
+    {"id": "chicken", "names": {"en": "Chicken", "yo": "Adìẹ", "ha": "Kaza", "ig": "Ọkụkọ"}, "aliases": ["chicken", "adie", "adìẹ", "kaza", "okuko"], "defaultUnit": "carton"},
+    {"id": "sugar", "names": {"en": "Sugar", "yo": "Ṣúgà", "ha": "Sukari", "ig": "Shuga"}, "aliases": ["sugar", "suga", "ṣúgà", "sukari", "shuga"], "defaultUnit": "bag"},
+    {"id": "salt", "names": {"en": "Salt", "yo": "Iyọ̀", "ha": "Gishiri", "ig": "Nnu"}, "aliases": ["salt", "iyo", "iyọ̀", "gishiri", "nnu"], "defaultUnit": "bag"},
+    {"id": "flour", "names": {"en": "Flour", "yo": "Ìyẹ̀fun", "ha": "Fulawa", "ig": "Ntụ ọka"}, "aliases": ["flour", "iyefun", "ìyẹ̀fun", "fulawa"], "defaultUnit": "bag"},
+    {"id": "milk", "names": {"en": "Milk", "yo": "Wàrà", "ha": "Madara", "ig": "Mmiri ara"}, "aliases": ["milk", "wara", "wàrà", "madara"], "defaultUnit": "carton"},
+    {"id": "bread", "names": {"en": "Bread", "yo": "Búrẹ́dì", "ha": "Burodi", "ig": "Achịcha"}, "aliases": ["bread", "buredi", "búrẹ́dì", "burodi", "achicha"], "defaultUnit": "loaf"},
+]
 FAST_MODEL_DIRS = {
     "yo": SERVER_DIR / "models" / "yoruba-asr-int8",
 }
@@ -300,6 +326,18 @@ def models() -> dict[str, Any]:
     return {
         "provider": "N-ATLaS by NCAIR/Awarri Technologies",
         "models": MODEL_IDS,
+    }
+
+
+@app.get("/api/v1/catalog")
+def market_catalog() -> dict[str, Any]:
+    """Return optional item suggestions; custom products remain unrestricted."""
+    return {
+        "version": 1,
+        "items": MARKET_CATALOG,
+        "custom_items_allowed": True,
+        "prices_included": False,
+        "stock_included": False,
     }
 
 
