@@ -26,7 +26,7 @@ from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 SERVER_DIR = Path(__file__).resolve().parent
 
 # Small language-neutral market catalog used to make product creation quick.
@@ -57,6 +57,7 @@ MARKET_CATALOG: list[dict[str, Any]] = [
 ]
 FAST_MODEL_DIRS = {
     "yo": SERVER_DIR / "models" / "yoruba-asr-int8",
+    "en": SERVER_DIR / "models" / "english-asr-int8",
 }
 MAX_AUDIO_BYTES = int(os.getenv("MAX_AUDIO_BYTES", str(8 * 1024 * 1024)))
 MAX_AUDIO_SECONDS = float(os.getenv("MAX_AUDIO_SECONDS", "31"))
@@ -282,14 +283,23 @@ class NatlasEngine:
                     condition_on_previous_text=False,
                     without_timestamps=True,
                     word_timestamps=False,
-                    vad_filter=False,
+                    vad_filter=True,
+                    vad_parameters={
+                        "min_silence_duration_ms": 500,
+                        "speech_pad_ms": 250,
+                    },
                 )
                 text = " ".join(segment.text.strip() for segment in segments).strip()
             else:
                 output = self._pipe(
                     {"array": waveform, "sampling_rate": 16000},
                     return_timestamps=False,
-                    generate_kwargs={"max_new_tokens": 64, "num_beams": 1},
+                    generate_kwargs={
+                        "language": language,
+                        "task": "transcribe",
+                        "max_new_tokens": 64,
+                        "num_beams": 1,
+                    },
                 )
                 text = str(output.get("text", "")).strip()
 
@@ -367,6 +377,23 @@ async def transcribe(
         raise HTTPException(status_code=422, detail="The recording is empty.")
 
     waveform = await run_in_threadpool(decode_audio, data)
+    duration_seconds = waveform.size / 16000.0
+    rms = float(np.sqrt(np.mean(np.square(waveform, dtype=np.float64))))
+    peak = float(np.max(np.abs(waveform)))
+    logger.info(
+        "Decoded voice language=%s duration=%.2fs rms=%.5f peak=%.5f bytes=%d",
+        language,
+        duration_seconds,
+        rms,
+        peak,
+        len(data),
+    )
+    if rms < 0.001 or peak < 0.01:
+        raise HTTPException(
+            status_code=422,
+            detail="The recording is too quiet. Speak closer to the phone and try again.",
+        )
+
     try:
         result = await run_in_threadpool(engine.transcribe, language, waveform)
     except HTTPException:
