@@ -133,7 +133,7 @@ const DIRECT_HUNDREDS: Record<string, number> = {
   eedegberun: 900,
 };
 
-const THOUSAND_WORDS = new Set(['egberun', 'eegberun']);
+const THOUSAND_WORDS = new Set(['egberun', 'eegberun', 'thousand']);
 const MILLION_WORDS = new Set(['milionu', 'million']);
 
 function stripMarks(value: string): string {
@@ -354,6 +354,45 @@ function findAmountSpan(
   return qualified.length ? qualified[qualified.length - 1] : null;
 }
 
+function editDistance(left: string, right: string): number {
+  const previous = Array.from({length: right.length + 1}, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    const current = [leftIndex];
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      current[rightIndex] = Math.min(
+        current[rightIndex - 1] + 1,
+        previous[rightIndex] + 1,
+        previous[rightIndex - 1] +
+          (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length];
+}
+
+function fuzzyWordMatch(left: string, right: string): boolean {
+  if (left.length < 4 || right.length < 4) return false;
+  const allowance = Math.max(
+    1,
+    Math.floor(Math.max(left.length, right.length) / 5),
+  );
+  return editDistance(left, right) <= allowance;
+}
+
+const GENERIC_PRODUCT_WORDS = new Set([
+  'bag',
+  'bottle',
+  'carton',
+  'crate',
+  'kg',
+  'pack',
+  'packet',
+  'piece',
+  'sachet',
+  'unit',
+]);
+
 function matchProduct(
   productText: string,
   products: Product[],
@@ -363,27 +402,55 @@ function matchProduct(
     return null;
   }
   const searchWords = search.split(/\s+/).filter(word => word.length > 1);
+  if (
+    !searchWords.length ||
+    searchWords.every(word => GENERIC_PRODUCT_WORDS.has(word))
+  ) {
+    return null;
+  }
   const ranked = products
     .map(product => {
       const candidates = [product.name, ...(product.voiceAliases ?? [])]
         .map(stripMarks)
         .filter(Boolean);
       const score = Math.max(
+        0,
         ...candidates.map(candidate => {
           if (candidate === search) return 100;
-          if (search.includes(candidate) || candidate.includes(search))
-            return 75;
-          const candidateWords = candidate.split(/\s+/);
-          return (
-            searchWords.filter(word => candidateWords.includes(word)).length *
-            12
+          if (search.includes(candidate) || candidate.includes(search)) {
+            return 78;
+          }
+          const fullDistance = editDistance(candidate, search);
+          const fullAllowance = Math.max(
+            1,
+            Math.floor(Math.max(candidate.length, search.length) / 6),
           );
+          if (fullDistance <= fullAllowance) {
+            return 88 - fullDistance * 5;
+          }
+          const candidateWords = candidate
+            .split(/\s+/)
+            .filter(word => word.length > 1);
+          const exactWords = searchWords.filter(word =>
+            candidateWords.includes(word),
+          ).length;
+          const fuzzyWords = searchWords.filter(
+            word =>
+              !candidateWords.includes(word) &&
+              candidateWords.some(candidateWord =>
+                fuzzyWordMatch(word, candidateWord),
+              ),
+          ).length;
+          return exactWords * 18 + fuzzyWords * 16;
         }),
       );
       return {product, score};
     })
     .sort((a, b) => b.score - a.score);
-  return ranked[0]?.score > 0 ? ranked[0].product : null;
+
+  // Typo-tolerant full names and saved aliases score well above this floor;
+  // weak incidental word overlap remains below it.
+  return ranked[0]?.score >= 20 ? ranked[0].product : null;
 }
 
 export function parseSaleIntent(
@@ -391,7 +458,13 @@ export function parseSaleIntent(
   products: Product[],
 ): SaleIntent {
   const tokens = tokenize(transcript);
-  if (!tokens.some(token => SALE_WORDS.has(canonicalToken(token)))) {
+  const cleanTokens = tokens.map(canonicalToken);
+  const hasSaleWord = cleanTokens.some(token => SALE_WORDS.has(token));
+  const isExplicitNonSale =
+    cleanTokens.includes('restock') ||
+    cleanTokens.includes('expense') ||
+    (cleanTokens.includes('fi') && cleanTokens.includes('kun'));
+  if (isExplicitNonSale) {
     return {
       intent: 'SALE',
       productId: null,
@@ -408,6 +481,9 @@ export function parseSaleIntent(
     };
   }
 
+  // VoiceSaleScreen is entered through an explicit “Voice sale” action, so a
+  // trader may naturally begin with the item (“Indomie one carton…”). A sale
+  // verb raises confidence but is not required; review is always required.
   const spans = numberSpans(tokens);
   const amountSpan = findAmountSpan(tokens, spans);
   const quantitySpan = spans.find(
@@ -439,7 +515,7 @@ export function parseSaleIntent(
   const product = matchProduct(productText, products);
 
   const amountPaidKobo = amountSpan ? Math.round(amountSpan.value * 100) : null;
-  let confidence = 0.46;
+  let confidence = hasSaleWord ? 0.46 : 0.38;
   if (product) confidence += 0.25;
   if (quantitySpan) confidence += 0.1;
   if (amountSpan) confidence += 0.12;

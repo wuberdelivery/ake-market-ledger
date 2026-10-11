@@ -6,7 +6,7 @@
 
 AKE Market Ledger is a React Native Android/iOS application for recording multi-item sales, expenses, stock and customer debt. Core bookkeeping uses an on-device SQLite database and remains available offline. Voice sales require connectivity to the project's secure ASR gateway; if voice processing fails, the trader can retry or continue with editable manual entry without losing access to the ledger.
 
-Version 1.1 adds a visible Items & stock area, unrestricted custom products, online/offline market suggestions, corrected camera/gallery handling, atomic grouped receipts, an editable cart and recoverable per-user drafts, searchable transaction history with immutable correction, reversal-aware reports, visible voice activation, persistent language Settings, and explicit user switching/logout. Schema migration v3 preserves existing rows; it only adds receipt metadata and nullable links.
+Version 1.1 adds a visible Items & stock area, unrestricted custom products, online/offline market suggestions, corrected camera/gallery handling, atomic grouped receipts, an editable cart and recoverable per-user drafts, searchable transaction history with immutable correction, reversal-aware reports, visible voice activation, persistent language Settings, and explicit user switching/logout. Version 1.1.2 also accepts product-first Voice Sale shorthand and typo-tolerant matching against saved custom product names while keeping every result in review. Schema migration v3 preserves existing rows; it only adds receipt metadata and nullable links.
 
 Configured official voice-model mappings:
 
@@ -82,9 +82,9 @@ Release signing values are read from the operator's private Gradle properties an
 
 Current signed Android release:
 
-- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.1-v5.apk`
-- QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.1-APK-QR.png`
-- SHA-256: `ce4c405266bc4903b37fb125e53e3f2a9da54f9e3172047bb01d13a9ff5621ba`
+- APK: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.2-v6.apk`
+- QR: `https://wuber.com.ng/storage/ake-ledger/AKE-Market-Ledger-1.1.2-APK-QR.png`
+- SHA-256: `2ef2ae48eee53cb9ae64628a1aaa50f492dc4fe592ee5ecd34a72d1291fd5ee7`
 
 See `PRODUCT_HARDENING_REPORT.md` and `DEVICE_SMOKE_TEST_V1.1.md` for implementation decisions, verified checks, and the remaining physical-phone gate.
 

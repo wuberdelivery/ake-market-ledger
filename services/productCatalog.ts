@@ -23,6 +23,25 @@ export const LOCAL_MARKET_CATALOG: MarketCatalogItem[] = [
     defaultUnit: 'bag',
   },
   {
+    id: 'indomie-noodles',
+    names: {
+      en: 'Indomie noodles',
+      yo: 'Indomie noodles',
+      ha: 'Indomie noodles',
+      ig: 'Indomie noodles',
+    },
+    aliases: [
+      'indomie',
+      'indomine',
+      'indomi',
+      'indomy',
+      'noodles',
+      'instant noodles',
+      'indomie carton',
+    ],
+    defaultUnit: 'carton',
+  },
+  {
     id: 'garri',
     names: {en: 'Garri', yo: 'Gàrí', ha: 'Gari', ig: 'Garri'},
     aliases: ['garri', 'gari', 'gàrí'],

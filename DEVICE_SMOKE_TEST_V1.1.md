@@ -39,12 +39,14 @@ Use a phone that already has v1.0.2 if possible. Do not clear app data.
 ## 5. Voice review (genuine Yoruba speech)
 
 1. Tap the visible **Voice sale** button.
-2. Hold the microphone and speak one genuine sale; release when finished.
+2. Confirm the custom product `Indomine carton` exists, then hold the microphone and say **“Indomie one carton five thousand naira”** without adding “sold” or “ta”; release when finished.
 3. Confirm Listening and Processing states are clear.
-4. Confirm the exact transcript, interpreted product/quantity, total, paid amount, and balance are displayed.
-5. Use **Review & edit**, correct one field, and save.
-6. Test airplane mode or service failure and confirm Retry and manual entry remain available.
-7. Start processing once more, tap cancel, and confirm the app returns without saving.
+4. Record the exact displayed ASR transcript and confirm the interpreted product is `Indomine carton`, quantity is 1, and paid amount is ₦5,000.
+5. Say only **“carton”** and confirm the app does not guess a product from that generic unit.
+6. Confirm the transcript, interpreted product/quantity, total, paid amount, and balance are displayed for review and nothing saves automatically.
+7. Use **Review & edit**, correct one field, and save.
+8. Test airplane mode or service failure and confirm Retry and manual entry remain available.
+9. Start processing once more, tap cancel, and confirm the app returns without saving.
 
 ## 6. Settings and users
 

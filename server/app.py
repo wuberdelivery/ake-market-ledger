@@ -26,7 +26,7 @@ from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 SERVER_DIR = Path(__file__).resolve().parent
 
 # Small language-neutral market catalog used to make product creation quick.
@@ -35,6 +35,7 @@ SERVER_DIR = Path(__file__).resolve().parent
 MARKET_CATALOG: list[dict[str, Any]] = [
     {"id": "beans", "names": {"en": "Beans", "yo": "Ẹ̀wà", "ha": "Wake", "ig": "Agwa"}, "aliases": ["beans", "bean", "ewa", "ẹ̀wà", "wake", "agwa"], "defaultUnit": "bag"},
     {"id": "rice", "names": {"en": "Rice", "yo": "Ìrẹsì", "ha": "Shinkafa", "ig": "Osikapa"}, "aliases": ["rice", "iresi", "ìrẹsì", "shinkafa", "osikapa", "apo iresi"], "defaultUnit": "bag"},
+    {"id": "indomie-noodles", "names": {"en": "Indomie noodles", "yo": "Indomie noodles", "ha": "Indomie noodles", "ig": "Indomie noodles"}, "aliases": ["indomie", "indomine", "indomi", "indomy", "noodles", "instant noodles", "indomie carton"], "defaultUnit": "carton"},
     {"id": "garri", "names": {"en": "Garri", "yo": "Gàrí", "ha": "Gari", "ig": "Garri"}, "aliases": ["garri", "gari", "gàrí"], "defaultUnit": "bag"},
     {"id": "yam", "names": {"en": "Yam", "yo": "Iṣu", "ha": "Doya", "ig": "Ji"}, "aliases": ["yam", "isu", "iṣu", "doya", "ji"], "defaultUnit": "tuber"},
     {"id": "maize", "names": {"en": "Maize", "yo": "Àgbàdo", "ha": "Masara", "ig": "Ọka"}, "aliases": ["maize", "corn", "agbado", "àgbàdo", "masara", "oka", "ọka"], "defaultUnit": "bag"},

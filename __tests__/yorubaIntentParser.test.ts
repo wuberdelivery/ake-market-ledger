@@ -15,6 +15,12 @@ const products = [
     voiceAliases: ['ewa'],
     sellingPriceKobo: 250000,
   } as Product,
+  {
+    id: 'indomie',
+    name: 'Indomine carton',
+    voiceAliases: ['indomine carton'],
+    sellingPriceKobo: 500000,
+  } as Product,
 ];
 
 describe('parseYorubaNumber', () => {
@@ -66,7 +72,37 @@ describe('parseSaleIntent', () => {
     expect(intent.amountPaidKobo).toBe(5000);
   });
 
-  it('flags unknown intents and never marks them ready to save', () => {
+  it('recognizes a custom item first, without requiring a sale verb', () => {
+    const intent = parseSaleIntent(
+      'Indomie one carton five thousand naira',
+      products,
+    );
+    expect(intent.productId).toBe('indomie');
+    expect(intent.quantity).toBe(1);
+    expect(intent.amountPaidKobo).toBe(500000);
+    expect(intent.requiresReview).toBe(true);
+  });
+
+  it('recognizes the exact saved custom-product shorthand', () => {
+    const intent = parseSaleIntent('Indomine carton', products);
+    expect(intent.productId).toBe('indomie');
+    expect(intent.missing).toEqual(['quantity', 'amount']);
+  });
+
+  it('matches a close ASR spelling to the saved custom product', () => {
+    const intent = parseSaleIntent('Indomie carton', products);
+    expect(intent.productId).toBe('indomie');
+    expect(intent.missing).toEqual(['quantity', 'amount']);
+  });
+
+  it('does not choose a product from only a generic unit', () => {
+    const intent = parseSaleIntent('carton', products);
+    expect(intent.productId).toBeNull();
+    expect(intent.reason).toBe('PRODUCT_NOT_FOUND');
+    expect(intent.requiresReview).toBe(true);
+  });
+
+  it('flags explicit restock intents and never marks them ready to save', () => {
     const intent = parseSaleIntent('Fi Iresi kun ile itaja', products);
     expect(intent.reason).toBe('UNSUPPORTED_INTENT');
     expect(intent.requiresReview).toBe(true);
