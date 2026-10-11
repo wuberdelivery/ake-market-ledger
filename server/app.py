@@ -26,7 +26,7 @@ from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.3"
 SERVER_DIR = Path(__file__).resolve().parent
 
 # Small language-neutral market catalog used to make product creation quick.
@@ -57,6 +57,7 @@ MARKET_CATALOG: list[dict[str, Any]] = [
 ]
 FAST_MODEL_DIRS = {
     "yo": SERVER_DIR / "models" / "yoruba-asr-int8",
+    "ig": SERVER_DIR / "models" / "igbo-asr-int8",
     "en": SERVER_DIR / "models" / "english-asr-int8",
 }
 MAX_AUDIO_BYTES = int(os.getenv("MAX_AUDIO_BYTES", str(8 * 1024 * 1024)))
@@ -274,9 +275,14 @@ class NatlasEngine:
             assert self._pipe is not None
 
             if self._runtime == "ctranslate2-int8":
+                # Base Whisper has no built-in Igbo language token. The official
+                # NCAIR Igbo model card therefore decodes without forcing `ig`;
+                # its fine-tuned weights and published generation config handle
+                # the speech. Other supported Whisper language codes are forced.
+                decoder_language = None if language == "ig" else language
                 segments, _info = self._pipe.transcribe(
                     waveform,
-                    language=language,
+                    language=decoder_language,
                     beam_size=1,
                     best_of=1,
                     temperature=0,
@@ -291,15 +297,18 @@ class NatlasEngine:
                 )
                 text = " ".join(segment.text.strip() for segment in segments).strip()
             else:
+                generate_kwargs: dict[str, Any] = {
+                    "max_new_tokens": 64,
+                    "num_beams": 1,
+                }
+                if language != "ig":
+                    generate_kwargs.update(
+                        {"language": language, "task": "transcribe"},
+                    )
                 output = self._pipe(
                     {"array": waveform, "sampling_rate": 16000},
                     return_timestamps=False,
-                    generate_kwargs={
-                        "language": language,
-                        "task": "transcribe",
-                        "max_new_tokens": 64,
-                        "num_beams": 1,
-                    },
+                    generate_kwargs=generate_kwargs,
                 )
                 text = str(output.get("text", "")).strip()
 
