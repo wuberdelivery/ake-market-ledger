@@ -1,6 +1,6 @@
 # Ake Ledger 1.1 Product Hardening Report
 
-Date: 11 October 2026
+Date: 12 October 2026
 Release: Android `1.1.4` (`versionCode 8`)
 
 ## Root causes reproduced
@@ -94,11 +94,20 @@ Release: Android `1.1.4` (`versionCode 8`)
 - This confirms the v1.1.4 microphone path, upload, official English ASR inference, typo-tolerant product matching, quantity/amount extraction, and review fallback on that physical phone.
 - A later physical-phone screenshot shows four separate persisted inventory entries (Honey Beans, Indomie noodles, Rice, and Tin tomatoes), confirming that the first-product-only transaction collision is repaired and multiple products can be added.
 
+## Field validation completed on 12 October 2026
+
+- The consented physical-phone session used 10 anonymous participant codes and generated **50 server-verified Voice Sale requests**: 26 English, 14 Yoruba, and 10 Igbo. The official routes returned 49 HTTP 200 responses and one safe HTTP 422 no-speech rejection. Server audio retention remained disabled.
+- Detailed displayed transcript/error evidence is available for 14 interactions. The remaining 36 client transcripts were not captured and were not reconstructed or invented.
+- Nine interactions have visible transcript-and-interpretation results. In that limited evidence sample, 4/9 transcripts were acceptable/relevant, 2/9 intents were correct before editing, and 8/9 required correction. These figures are not extrapolated to all 50 requests.
+- Genuine physical Igbo speech returned through `NCAIR1/Igbo-ASR` after the v1.2.3 repair, establishing that the unsupported-token crash is fixed. Visible Igbo product matching sometimes worked, but quantity and amount wording generally required correction.
+- Four Yoruba attempts visibly timed out on the phone even though the server later completed with HTTP 200. The app displayed Retry and Enter manually rather than dead-ending.
+- Incorrect or uncertain interpretations remained reviewable and were not silently saved. The no-speech input was rejected instead of producing hallucinated transaction text.
+
 ## Remaining validation and speech limitations
 
-- The user still needs to complete the wider smoke test: an arbitrary non-catalog custom product through Voice Sale, a two-item partial-payment sale, restart/draft recovery, language switching, user switching, reversal, and genuine spoken Yoruba. Igbo also requires a fresh genuine-speech retest after the live v1.2.3 decoding repair.
-- One successful genuine English interaction establishes functionality, not general speech accuracy. Synthetic tones verify infrastructure only and must not be represented as speech accuracy evidence.
+- Client-level result evidence is incomplete for 36/50 requests; overall transcript accuracy is therefore not claimed.
+- No supplied field-session screenshot proves that a test sale was finally saved. An end-to-end saved arbitrary non-catalog Voice Sale remains outstanding.
+- The wider smoke test still lacks supplied evidence for a two-item partial-payment save, restart/draft recovery, user switching, reversal, and airplane-mode manual sale.
 - Yoruba parsing is deterministic and intentionally constrained; it is not a general Yoruba-language understanding model. Regional wording, ASR substitutions, and complex traditional number forms may still need manual correction.
-- The gateway has mappings for official Yoruba, Hausa, Igbo, and Nigerian-accented English ASR repositories, but this deployment has been performance-verified only with the official Yoruba model. Other voice-language paths must be treated as unverified until tested end to end; manual bookkeeping remains available.
-- The required formal validation log remains at 0/50 because participant consent/metadata has not yet been recorded. The physical interaction above is valid engineering evidence but must not be counted toward the challenge threshold without the required consent-safe documentation.
-- Hausa/Igbo translations are implementation drafts and require native-speaker review before making quality claims.
+- Hausa was not physically exercised in the supplied validation evidence and must not be presented as verified.
+- Hausa/Igbo translations remain implementation aids and require native-speaker review before making language-quality claims.
